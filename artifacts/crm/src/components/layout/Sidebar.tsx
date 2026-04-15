@@ -10,6 +10,7 @@ import {
   ChevronRight,
   TrendingUp,
   Zap,
+  Bell,
 } from "lucide-react";
 
 const navItems = [
@@ -21,6 +22,7 @@ const navItems = [
 
 const adminItems = [
   { label: "Manage Users", icon: Users, href: "/admin/users" },
+  { label: "Reminders", icon: Bell, href: "/admin/reminders" },
 ];
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
