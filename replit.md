@@ -25,3 +25,37 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## SalesCRM Application
+
+A full-stack Sales CRM with:
+- **Frontend**: React + Vite at `artifacts/crm` (served at `/`)
+- **Backend**: Express API server at `artifacts/api-server` (served at `/api`)
+- **Database**: PostgreSQL with Drizzle ORM (`lib/db`)
+- **API spec**: OpenAPI at `lib/api-spec/openapi.yaml`, generated client at `lib/api-client-react`
+
+### Features
+- JWT authentication (stored in localStorage as `crm_token`) with admin/sales roles
+- Role-scoped lead access: sales reps see only their own leads; admins see all
+- Customer profiles with interaction history timeline
+- Lead pipeline management (New → Contacted → Qualified → Proposal → Won/Lost)
+- Google Maps navigation links per lead (when customer has address)
+- Follow-up email endpoint (Nodemailer, SMTP env vars optional — logs if not configured)
+- Admin panel for user management (admin-only)
+- Dashboard with stats cards and lead status pie chart
+
+### Demo Credentials
+- Admin: `admin@crm.com` / `admin123`
+- Sales Rep: `sarah@crm.com` / `sales123`
+- Sales Rep: `mike@crm.com` / `sales123`
+
+### Auth Architecture
+- `setAuthTokenGetter` from `@workspace/api-client-react` wires JWT bearer token into every API request
+- Called in `artifacts/crm/src/main.tsx` via `setupApiAuth()`
+- `useAuth` hook uses `useGetMe` to validate token; exposes `isAuthenticated`, `userRole`, `logout`
+- Protected routes redirect to `/login` if no token; admin-only routes redirect to `/` for non-admins
+
+### Environment Variables
+- `SESSION_SECRET` — JWT signing secret (required, set as Replit secret)
+- `DATABASE_URL` — PostgreSQL connection string (auto-provided by Replit)
+- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_PORT` — optional, for real email delivery

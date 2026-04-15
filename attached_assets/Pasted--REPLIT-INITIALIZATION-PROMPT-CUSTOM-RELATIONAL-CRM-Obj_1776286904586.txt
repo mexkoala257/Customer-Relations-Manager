@@ -1,0 +1,30 @@
+**REPLIT INITIALIZATION PROMPT: CUSTOM RELATIONAL CRM**
+
+**Objective:**
+Build a full-stack CRM web application to migrate data from a Google Sheet to a self-hosted PostgreSQL database. The system must support multi-tenant data privacy (reps see only their own data) and a relational 'Customer History' view.
+
+**Tech Stack:**
+- **Backend:** Node.js (Express.js)
+- **Database:** PostgreSQL (using Sequelize or Prisma ORM)
+- **Frontend:** HTML/JS with Tailwind CSS
+- **Authentication:** JWT-based login system
+
+**Database Schema (Strict Adherence Required):**
+1. **Users Table:** `id` (UUID), `email` (Unique), `password_hash`, `staff_id` (Integer), `role` (Admin/Sales).
+2. **Customers Table:** `id` (UUID), `company_name`, `contact_name`, `phone`, `street_address`, `city`, `state`, `zip_code`.
+3. **Leads Table (The Interactions):** `id` (UUID), `customer_id` (FK), `user_id` (FK), `notes` (Text), `status` (Default: 'New'), `follow_up_date` (Date), `date_key` (Integer YYYYMMDD), `created_at` (Timestamp).
+
+**Core Functionality to Generate:**
+1. **Scoped Dashboard:** When a user logs in, fetch ONLY leads where `user_id` matches the session.
+2. **Relational History:** A 'Customer Profile' route that displays the customer's details and a reverse-chronological list of every lead/interaction associated with their `customer_id`.
+3. **Google Maps Integration:** A 'Navigate' button for each lead that encodes the `street_address` and `city` into a Google Maps Search URL.
+4. **Email Logic (Nodemailer):** A script setup to query the database for leads where `follow_up_date` is Today and send an SMTP email via a dedicated Gmail account.
+
+**Scalability & Extensibility:**
+- Design the Lead model to include a `metadata` JSONB column for project-specific fields (Battery Repairs vs. 3D Printing orders).
+- Use a RESTful API structure so the frontend remains decoupled from the data logic.
+
+**Instructions:**
+- Start by creating the database connection and the 3 models (User, Customer, Lead).
+- Generate a 'Seed' script to simulate the transition from a flat spreadsheet to these relational tables.
+- Build a clean, 'friendly' mobile-responsive UI using Tailwind CSS.
