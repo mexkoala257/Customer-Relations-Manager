@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getToken } from "@/lib/api";
 import { Bell, Send, CheckCircle, Clock, Loader2, Calendar, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmailPreview } from "@/components/email-preview";
 
 const API = "/api/admin/reminders";
 
@@ -303,6 +304,9 @@ export default function AdminRemindersPage() {
             <div className="flex gap-2"><span className="font-mono bg-background rounded px-1.5 py-0.5 border border-border">8:00 AM Mon & Fri</span><span>Weekly summary emails dispatched</span></div>
           </div>
         </div>
+
+        {/* Email Preview */}
+        <EmailPreview />
 
         {/* SMTP notice */}
         <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-4 text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
