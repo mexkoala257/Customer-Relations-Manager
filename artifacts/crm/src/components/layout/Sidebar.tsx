@@ -9,6 +9,7 @@ import {
   Settings,
   ChevronRight,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 
 const navItems = [
@@ -50,6 +51,22 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {/* Quick Entry CTA */}
+        <Link
+          href="/new"
+          onClick={onClose}
+          className={cn(
+            "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all mb-3",
+            isActive("/new")
+              ? "bg-accent text-accent-foreground"
+              : "bg-accent/20 text-accent hover:bg-accent hover:text-accent-foreground border border-accent/30"
+          )}
+          data-testid="nav-quick-entry"
+        >
+          <Zap className="w-4 h-4 flex-shrink-0" />
+          <span>Quick Entry</span>
+        </Link>
+
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (

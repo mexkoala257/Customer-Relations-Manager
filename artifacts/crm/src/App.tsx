@@ -13,6 +13,7 @@ import LeadNewPage from "@/pages/lead-new";
 import CustomersPage from "@/pages/customers";
 import CustomerDetailPage from "@/pages/customer-detail";
 import CustomerNewPage from "@/pages/customer-new";
+import QuickEntryPage from "@/pages/quick-entry";
 import AdminUsersPage from "@/pages/admin-users";
 import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -64,6 +65,10 @@ function AppRouter() {
 
       <Route path="/">
         <ProtectedRoute component={DashboardPage} />
+      </Route>
+
+      <Route path="/new">
+        <ProtectedRoute component={QuickEntryPage} />
       </Route>
 
       <Route path="/leads/new">
