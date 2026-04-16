@@ -22,16 +22,9 @@ import {
   Loader2,
 } from "lucide-react";
 
-const STATUS_OPTIONS = ["", "New", "Contacted", "Qualified", "Proposal", "Won", "Lost"];
+import { LEAD_STATUSES, STATUS_BADGE } from "@/lib/lead-status";
 
-const STATUS_LABELS: Record<string, string> = {
-  New: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  Contacted: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-  Qualified: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-  Proposal: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400",
-  Won: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  Lost: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-};
+const STATUS_OPTIONS = ["", ...LEAD_STATUSES];
 
 export default function LeadsPage() {
   const { toast } = useToast();
@@ -193,7 +186,7 @@ export default function LeadsPage() {
                           <span
                             className={cn(
                               "text-xs px-2.5 py-1 rounded-full font-semibold",
-                              STATUS_LABELS[lead.status] ?? "bg-gray-100 text-gray-700"
+                              STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700"
                             )}
                           >
                             {lead.status}

@@ -687,7 +687,7 @@ components:
           type: ["string", "null"]
         status:
           type: string
-          enum: [New, Contacted, Qualified, Proposal, Won, Lost]
+          enum: [New, Qualify, Discovery, Proposal, Negotiate, Close Loss, Close Win, Maintain, Grow]
         followUpDate:
           type: ["string", "null"]
         dateKey:
@@ -716,7 +716,7 @@ components:
           type: ["string", "null"]
         status:
           type: string
-          enum: [New, Contacted, Qualified, Proposal, Won, Lost]
+          enum: [New, Qualify, Discovery, Proposal, Negotiate, Close Loss, Close Win, Maintain, Grow]
         followUpDate:
           type: ["string", "null"]
         dateKey:
@@ -747,7 +747,7 @@ components:
           type: string
         status:
           type: string
-          enum: [New, Contacted, Qualified, Proposal, Won, Lost]
+          enum: [New, Qualify, Discovery, Proposal, Negotiate, Close Loss, Close Win, Maintain, Grow]
         followUpDate:
           type: string
         metadata:
@@ -762,7 +762,7 @@ components:
           type: string
         status:
           type: string
-          enum: [New, Contacted, Qualified, Proposal, Won, Lost]
+          enum: [New, Qualify, Discovery, Proposal, Negotiate, Close Loss, Close Win, Maintain, Grow]
         followUpDate:
           type: ["string", "null"]
         metadata:

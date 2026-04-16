@@ -13,7 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Zap, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STATUS_OPTIONS = ["New", "Contacted", "Qualified", "Proposal", "Won", "Lost"] as const;
+import { LEAD_STATUSES } from "@/lib/lead-status";
+const STATUS_OPTIONS = LEAD_STATUSES;
 
 type Mode = "new-customer" | "existing-customer";
 

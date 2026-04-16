@@ -30,8 +30,8 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     .from(leadsTable)
     .where(
       isAdmin
-        ? eq(leadsTable.status, "Won")
-        : and(eq(leadsTable.userId, userId), eq(leadsTable.status, "Won"))
+        ? eq(leadsTable.status, "Close Win")
+        : and(eq(leadsTable.userId, userId), eq(leadsTable.status, "Close Win"))
     );
   const [newLeadsRow] = await db
     .select({ count: count() })

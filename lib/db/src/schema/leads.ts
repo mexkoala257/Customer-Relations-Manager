@@ -4,6 +4,20 @@ import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { customersTable } from "./customers";
 
+export const LEAD_STATUSES = [
+  "New",
+  "Qualify",
+  "Discovery",
+  "Proposal",
+  "Negotiate",
+  "Close Loss",
+  "Close Win",
+  "Maintain",
+  "Grow",
+] as const;
+
+export type LeadStatus = typeof LEAD_STATUSES[number];
+
 export const leadsTable = pgTable("leads", {
   id: uuid("id").defaultRandom().primaryKey(),
   customerId: uuid("customer_id")
@@ -14,7 +28,7 @@ export const leadsTable = pgTable("leads", {
     .references(() => usersTable.id, { onDelete: "cascade" }),
   notes: text("notes"),
   status: text("status", {
-    enum: ["New", "Contacted", "Qualified", "Proposal", "Won", "Lost"],
+    enum: ["New", "Qualify", "Discovery", "Proposal", "Negotiate", "Close Loss", "Close Win", "Maintain", "Grow"],
   })
     .notNull()
     .default("New"),

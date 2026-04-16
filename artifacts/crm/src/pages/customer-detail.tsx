@@ -9,14 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock } from "lucide-react";
 
-const STATUS_LABELS: Record<string, string> = {
-  New: "bg-blue-100 text-blue-800",
-  Contacted: "bg-purple-100 text-purple-800",
-  Qualified: "bg-amber-100 text-amber-800",
-  Proposal: "bg-indigo-100 text-indigo-800",
-  Won: "bg-green-100 text-green-800",
-  Lost: "bg-red-100 text-red-800",
-};
+import { STATUS_BADGE } from "@/lib/lead-status";
 
 export default function CustomerDetailPage({ id }: { id: string }) {
   const { toast } = useToast();
@@ -167,7 +160,7 @@ export default function CustomerDetailPage({ id }: { id: string }) {
                         <span
                           className={cn(
                             "text-xs px-2 py-0.5 rounded-full font-semibold",
-                            STATUS_LABELS[lead.status] ?? "bg-gray-100 text-gray-700"
+                            STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700"
                           )}
                         >
                           {lead.status}

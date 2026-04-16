@@ -60,7 +60,7 @@ router.get("/leads", requireAuth, async (req, res): Promise<void> => {
   }
 
   if (status) {
-    conditions.push(eq(leadsTable.status, status as "New" | "Contacted" | "Qualified" | "Proposal" | "Won" | "Lost"));
+    conditions.push(eq(leadsTable.status, status as "New" | "Qualify" | "Discovery" | "Proposal" | "Negotiate" | "Close Loss" | "Close Win" | "Maintain" | "Grow"));
   }
 
   if (followUpToday === "true") {

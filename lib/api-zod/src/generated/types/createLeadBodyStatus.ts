@@ -11,9 +11,12 @@ export type CreateLeadBodyStatus =
 
 export const CreateLeadBodyStatus = {
   New: "New",
-  Contacted: "Contacted",
-  Qualified: "Qualified",
+  Qualify: "Qualify",
+  Discovery: "Discovery",
   Proposal: "Proposal",
-  Won: "Won",
-  Lost: "Lost",
+  Negotiate: "Negotiate",
+  Close_Loss: "Close Loss",
+  Close_Win: "Close Win",
+  Maintain: "Maintain",
+  Grow: "Grow",
 } as const;

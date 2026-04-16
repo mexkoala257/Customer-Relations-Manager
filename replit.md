@@ -38,7 +38,7 @@ A full-stack Sales CRM with:
 - JWT authentication (stored in localStorage as `crm_token`) with admin/sales roles
 - Role-scoped lead access: sales reps see only their own leads; admins see all
 - Customer profiles with interaction history timeline
-- Lead pipeline management (New → Contacted → Qualified → Proposal → Won/Lost)
+- Lead pipeline management (9 statuses: New → Qualify → Discovery → Proposal → Negotiate → Close Win / Close Loss → Maintain → Grow)
 - Google Maps navigation links per lead (when customer has address)
 - Follow-up email endpoint (Nodemailer, SMTP env vars optional — logs if not configured)
 - Admin panel for user management (admin-only)

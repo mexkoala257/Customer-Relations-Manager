@@ -11,7 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, MapPin, Loader2, Save } from "lucide-react";
 
-const STATUS_OPTIONS = ["New", "Contacted", "Qualified", "Proposal", "Won", "Lost"];
+import { LEAD_STATUSES } from "@/lib/lead-status";
+const STATUS_OPTIONS = [...LEAD_STATUSES];
 
 export default function LeadDetailPage({ id }: { id: string }) {
   const [, navigate] = useLocation();
@@ -51,7 +52,7 @@ export default function LeadDetailPage({ id }: { id: string }) {
     updateMutation.mutate({
       id,
       data: {
-        status: status as "New" | "Contacted" | "Qualified" | "Proposal" | "Won" | "Lost",
+        status: status as typeof LEAD_STATUSES[number],
         notes,
         followUpDate: followUpDate || null,
       },

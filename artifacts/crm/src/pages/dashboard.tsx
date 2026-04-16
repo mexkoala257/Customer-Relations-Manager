@@ -19,23 +19,7 @@ import {
 } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
-const STATUS_COLORS: Record<string, string> = {
-  New: "#3b82f6",
-  Contacted: "#8b5cf6",
-  Qualified: "#f59e0b",
-  Proposal: "#6366f1",
-  Won: "#10b981",
-  Lost: "#ef4444",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  New: "bg-blue-100 text-blue-800",
-  Contacted: "bg-purple-100 text-purple-800",
-  Qualified: "bg-amber-100 text-amber-800",
-  Proposal: "bg-indigo-100 text-indigo-800",
-  Won: "bg-green-100 text-green-800",
-  Lost: "bg-red-100 text-red-800",
-};
+import { STATUS_COLORS, STATUS_BADGE } from "@/lib/lead-status";
 
 function StatCard({
   label,
@@ -113,7 +97,7 @@ export default function DashboardPage() {
           <StatCard label="Follow-ups Today" value={summary?.followUpsToday} icon={Calendar} accent />
           <StatCard label="Total Customers" value={summary?.totalCustomers} icon={Building2} />
           <StatCard label="Total Leads" value={summary?.totalLeads} icon={Users} />
-          <StatCard label="Won" value={summary?.wonLeads} icon={CheckCircle} />
+          <StatCard label="Close Win" value={summary?.wonLeads} icon={CheckCircle} />
           <StatCard label="New" value={summary?.newLeads} icon={PlusCircle} />
         </div>
 
@@ -203,7 +187,7 @@ export default function DashboardPage() {
                         <span
                           className={cn(
                             "text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0",
-                            STATUS_LABELS[lead.status] ?? "bg-gray-100 text-gray-700"
+                            STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700"
                           )}
                         >
                           {lead.status}

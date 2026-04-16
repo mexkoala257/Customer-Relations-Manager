@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Mail, User, ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LEAD_STATUSES } from "@/lib/lead-status";
 
 const TODAY = new Date();
 const FMT_DATE = (d: Date) => d.toISOString().slice(0, 10);
@@ -20,9 +21,9 @@ function daysAgo(n: number) {
 const DEFAULT_FOLLOWUP_DATA = {
   repName: "sarah",
   leads: [
-    { companyName: "Acme Corp", contactName: "Jane Smith", followUpDate: daysFromNow(1), status: "Qualified" },
+    { companyName: "Acme Corp", contactName: "Jane Smith", followUpDate: daysFromNow(1), status: "Discovery" },
     { companyName: "TechVenture Inc", contactName: "Bob Johnson", followUpDate: daysFromNow(3), status: "Proposal" },
-    { companyName: "Global Solutions", contactName: "Carol White", followUpDate: daysFromNow(3), status: "Contacted" },
+    { companyName: "Global Solutions", contactName: "Carol White", followUpDate: daysFromNow(3), status: "Negotiate" },
   ],
 };
 
@@ -30,12 +31,12 @@ const DEFAULT_SUMMARY_DATA = {
   recipientName: "admin",
   periodLabel: "Monday Morning",
   recentLeads: [
-    { companyName: "Apex Industries", contactName: "Tom Lee", status: "Won", repEmail: "sarah@crm.com", updatedAt: daysAgo(2) },
+    { companyName: "Apex Industries", contactName: "Tom Lee", status: "Close Win", repEmail: "sarah@crm.com", updatedAt: daysAgo(2) },
     { companyName: "Riverside Co", contactName: "Amy Chen", status: "Proposal", repEmail: "mike@crm.com", updatedAt: daysAgo(4) },
-    { companyName: "Pinnacle LLC", contactName: "Dan Park", status: "Qualified", repEmail: "sarah@crm.com", updatedAt: daysAgo(6) },
+    { companyName: "Pinnacle LLC", contactName: "Dan Park", status: "Discovery", repEmail: "sarah@crm.com", updatedAt: daysAgo(6) },
   ],
   upcomingLeads: [
-    { companyName: "Acme Corp", contactName: "Jane Smith", followUpDate: daysFromNow(1), status: "Qualified", repEmail: "sarah@crm.com" },
+    { companyName: "Acme Corp", contactName: "Jane Smith", followUpDate: daysFromNow(1), status: "Discovery", repEmail: "sarah@crm.com" },
     { companyName: "TechVenture Inc", contactName: "Bob Johnson", followUpDate: daysFromNow(3), status: "Proposal", repEmail: "sarah@crm.com" },
     { companyName: "NextGen Brands", contactName: "Rita Moore", followUpDate: daysFromNow(5), status: "New", repEmail: "mike@crm.com" },
   ],
@@ -319,7 +320,7 @@ export function EmailPreview() {
                             }}
                             className="px-2 py-1.5 rounded border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
                           >
-                            {["New","Contacted","Qualified","Proposal","Won","Lost"].map((s) => (
+                            {LEAD_STATUSES.map((s) => (
                               <option key={s} value={s}>{s}</option>
                             ))}
                           </select>
