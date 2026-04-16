@@ -109,12 +109,13 @@ export default function LeadNewPage() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Follow-up Date
+                Follow-up Date <span className="text-destructive">*</span>
               </label>
               <input
                 type="date"
                 value={followUpDate}
                 onChange={(e) => setFollowUpDate(e.target.value)}
+                required
                 className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 data-testid="lead-followup-date"
               />

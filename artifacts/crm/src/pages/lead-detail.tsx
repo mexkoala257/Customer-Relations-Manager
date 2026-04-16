@@ -220,11 +220,12 @@ export default function LeadDetailPage({ id }: { id: string }) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">Follow-up Date</label>
+              <label className="text-xs font-semibold text-muted-foreground">Follow-up Date <span className="text-destructive">*</span></label>
               <input
                 type="date"
                 value={followUpDate}
                 onChange={(e) => setFollowUpDate(e.target.value)}
+                required
                 className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 data-testid="lead-followup-date"
               />
