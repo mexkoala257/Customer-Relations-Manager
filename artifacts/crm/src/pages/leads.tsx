@@ -211,11 +211,13 @@ function RowActions({
   mapsUrl,
   onFollowup,
   onDelete,
+  canDelete = true,
 }: {
   lead: { id: string };
   mapsUrl: string | null;
   onFollowup: () => void;
   onDelete: () => void;
+  canDelete?: boolean;
 }) {
   return (
     <div className="flex items-center gap-1.5 justify-end">
@@ -246,13 +248,15 @@ function RowActions({
       >
         <Edit className="w-4 h-4" />
       </Link>
-      <button
-        onClick={onDelete}
-        className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition"
-        data-testid={`delete-lead-${lead.id}`}
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      {canDelete && (
+        <button
+          onClick={onDelete}
+          className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition"
+          data-testid={`delete-lead-${lead.id}`}
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }
@@ -263,6 +267,8 @@ export default function LeadsPage() {
   const queryClient = useQueryClient();
   const { userRole } = useAuth();
   const isAdmin = userRole === "admin" || userRole === "superadmin";
+  const isDataEntry = userRole === "data-entry";
+  const canSeeAll = isAdmin || isDataEntry;
 
   const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [statusFilter, setStatusFilter] = useState("");
@@ -334,7 +340,7 @@ export default function LeadsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold tracking-tight" data-testid="leads-title">
-              {userRole === "admin" ? "All Leads" : "My Leads"}
+              {canSeeAll ? "All Leads" : "My Leads"}
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               {leads?.length ?? 0} {viewMode === "this-week" ? "follow-ups this week" : "total records"}
@@ -473,14 +479,20 @@ export default function LeadsPage() {
                                     onUpdated={refreshLeads}
                                   />
                                 </td>
-                                {userRole === "admin" && (
+                                {canSeeAll && (
                                   <td className="px-4 py-3.5">
-                                    <InlineRepSelect
-                                      leadId={lead.id}
-                                      currentRepId={lead.userId ?? ""}
-                                      users={allUsers ?? []}
-                                      onUpdated={refreshLeads}
-                                    />
+                                    {isAdmin ? (
+                                      <InlineRepSelect
+                                        leadId={lead.id}
+                                        currentRepId={lead.userId ?? ""}
+                                        users={allUsers ?? []}
+                                        onUpdated={refreshLeads}
+                                      />
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">
+                                        {lead.user?.email ?? "—"}
+                                      </span>
+                                    )}
                                   </td>
                                 )}
                                 <td className="px-4 py-3.5 text-muted-foreground max-w-[220px]">
@@ -492,6 +504,7 @@ export default function LeadsPage() {
                                     mapsUrl={mapsUrl}
                                     onFollowup={() => followupMutation.mutate({ id: lead.id })}
                                     onDelete={() => handleDelete(lead.id)}
+                                    canDelete={!isDataEntry}
                                   />
                                 </td>
                               </tr>
@@ -524,7 +537,7 @@ export default function LeadsPage() {
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Follow-up</th>
-                      {userRole === "admin" && (
+                      {canSeeAll && (
                         <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rep</th>
                       )}
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notes</th>
@@ -561,14 +574,20 @@ export default function LeadsPage() {
                           <td className="px-4 py-3.5 text-muted-foreground tabular-nums">
                             {formatDate(lead.followUpDate)}
                           </td>
-                          {userRole === "admin" && (
+                          {canSeeAll && (
                             <td className="px-4 py-3.5">
-                              <InlineRepSelect
-                                leadId={lead.id}
-                                currentRepId={lead.userId ?? ""}
-                                users={allUsers ?? []}
-                                onUpdated={refreshLeads}
-                              />
+                              {isAdmin ? (
+                                <InlineRepSelect
+                                  leadId={lead.id}
+                                  currentRepId={lead.userId ?? ""}
+                                  users={allUsers ?? []}
+                                  onUpdated={refreshLeads}
+                                />
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  {lead.user?.email ?? "—"}
+                                </span>
+                              )}
                             </td>
                           )}
                           <td className="px-4 py-3.5 text-muted-foreground max-w-[200px]">
@@ -580,6 +599,7 @@ export default function LeadsPage() {
                               mapsUrl={mapsUrl}
                               onFollowup={() => followupMutation.mutate({ id: lead.id })}
                               onDelete={() => handleDelete(lead.id)}
+                              canDelete={!isDataEntry}
                             />
                           </td>
                         </tr>

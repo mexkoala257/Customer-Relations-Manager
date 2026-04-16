@@ -228,7 +228,7 @@ export default function AdminUsersPage() {
         email: form.email,
         password: form.password,
         staffId: parseInt(form.staffId),
-        role: form.role as "admin" | "sales",
+        role: form.role as "admin" | "sales" | "data-entry",
       },
     });
   }
@@ -314,6 +314,7 @@ export default function AdminUsersPage() {
                 >
                   <option value="sales">Sales</option>
                   <option value="admin">Admin</option>
+                  <option value="data-entry">Data Entry</option>
                 </select>
               </div>
               <div className="sm:col-span-2">
@@ -369,10 +370,12 @@ export default function AdminUsersPage() {
                         className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
                           user.role === "admin"
                             ? "bg-accent/20 text-accent-foreground"
+                            : user.role === "data-entry"
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                             : "bg-muted text-muted-foreground"
                         }`}
                       >
-                        {user.role}
+                        {user.role === "data-entry" ? "Data Entry" : user.role}
                       </span>
                     </td>
                     <td className="px-4 py-3.5">
