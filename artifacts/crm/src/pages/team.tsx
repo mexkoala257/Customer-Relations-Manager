@@ -560,7 +560,7 @@ export default function TeamPage() {
     <AppLayout>
       <div className="p-6 max-w-4xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">Team Portal</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Messages, updates, photos and documents for the whole team</p>
         </div>
 
