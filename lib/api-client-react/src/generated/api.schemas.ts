@@ -116,6 +116,7 @@ export interface LeadWithDetails {
   /** @nullable */
   notes?: string | null;
   status: LeadWithDetailsStatus;
+  isActive: boolean;
   /** @nullable */
   followUpDate?: string | null;
   /** @nullable */

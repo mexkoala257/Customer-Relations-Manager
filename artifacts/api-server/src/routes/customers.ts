@@ -67,6 +67,7 @@ router.get("/customers/:id", requireAuth, async (req, res): Promise<void> => {
       userId: leadsTable.userId,
       notes: leadsTable.notes,
       status: leadsTable.status,
+      isActive: leadsTable.isActive,
       followUpDate: leadsTable.followUpDate,
       dateKey: leadsTable.dateKey,
       metadata: leadsTable.metadata,

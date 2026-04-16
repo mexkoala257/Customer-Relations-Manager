@@ -722,6 +722,8 @@ components:
         status:
           type: string
           enum: [New, Qualify, Discovery, Proposal, Negotiate, Close Loss, Close Win, Maintain, Grow]
+        isActive:
+          type: boolean
         followUpDate:
           type: ["string", "null"]
         dateKey:
@@ -739,6 +741,7 @@ components:
         - customerId
         - userId
         - status
+        - isActive
         - createdAt
         - customer
         - user

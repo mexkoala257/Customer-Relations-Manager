@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, integer, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -32,6 +32,7 @@ export const leadsTable = pgTable("leads", {
   })
     .notNull()
     .default("New"),
+  isActive: boolean("is_active").notNull().default(true),
   followUpDate: text("follow_up_date"),
   dateKey: integer("date_key"),
   metadata: jsonb("metadata"),

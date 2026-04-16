@@ -147,69 +147,87 @@ export default function CustomerDetailPage({ id }: { id: string }) {
             </div>
           ) : (
             <div className="space-y-4">
-              {leads.map((lead: any, idx: number) => (
-                <div
-                  key={lead.id}
-                  className="relative pl-5 border-l-2 border-border last:border-transparent"
-                  data-testid={`history-lead-${lead.id}`}
-                >
-                  <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-accent border-2 border-background" />
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={cn(
-                            "text-xs px-2 py-0.5 rounded-full font-semibold",
-                            STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700"
-                          )}
-                        >
-                          {lead.status}
-                        </span>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {new Date(lead.createdAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
-                        {lead.user?.email && (
-                          <span className="text-xs text-muted-foreground">
-                            by {lead.user.email.split("@")[0]}
+              {leads.map((lead: any, idx: number) => {
+                const inactive = lead.isActive === false;
+                return (
+                  <div
+                    key={lead.id}
+                    className={cn(
+                      "relative pl-5 border-l-2 last:border-transparent",
+                      inactive ? "border-border/40 opacity-60" : "border-border"
+                    )}
+                    data-testid={`history-lead-${lead.id}`}
+                  >
+                    <div className={cn(
+                      "absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-background",
+                      inactive ? "bg-muted-foreground/40" : "bg-accent"
+                    )} />
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={cn(
+                              "text-xs px-2 py-0.5 rounded-full font-semibold",
+                              inactive
+                                ? "bg-muted text-muted-foreground"
+                                : STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700"
+                            )}
+                          >
+                            {lead.status}
                           </span>
+                          {inactive && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium tracking-wide uppercase">
+                              Archived
+                            </span>
+                          )}
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(lead.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                          {lead.user?.email && (
+                            <span className="text-xs text-muted-foreground">
+                              by {lead.user.email.split("@")[0]}
+                            </span>
+                          )}
+                        </div>
+                        {lead.notes && (
+                          <p className="text-sm mt-1.5 text-foreground/80 leading-relaxed">
+                            {lead.notes}
+                          </p>
+                        )}
+                        {lead.followUpDate && !inactive && (
+                          <div className="text-xs text-accent font-medium mt-1">
+                            Follow-up: {new Date(lead.followUpDate + "T00:00:00").toLocaleDateString()}
+                          </div>
                         )}
                       </div>
-                      {lead.notes && (
-                        <p className="text-sm mt-1.5 text-foreground/80 leading-relaxed">
-                          {lead.notes}
-                        </p>
-                      )}
-                      {lead.followUpDate && (
-                        <div className="text-xs text-accent font-medium mt-1">
-                          Follow-up: {new Date(lead.followUpDate + "T00:00:00").toLocaleDateString()}
+                      {!inactive && (
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            onClick={() => followupMutation.mutate({ id: lead.id })}
+                            className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition"
+                            title="Send follow-up email"
+                            data-testid={`followup-${lead.id}`}
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                          </button>
+                          <Link
+                            href={`/leads/${lead.id}`}
+                            className="text-xs text-muted-foreground hover:text-foreground transition underline-offset-2 hover:underline"
+                            data-testid={`view-lead-${lead.id}`}
+                          >
+                            Edit
+                          </Link>
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button
-                        onClick={() => followupMutation.mutate({ id: lead.id })}
-                        className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition"
-                        title="Send follow-up email"
-                        data-testid={`followup-${lead.id}`}
-                      >
-                        <Mail className="w-3.5 h-3.5" />
-                      </button>
-                      <Link
-                        href={`/leads/${lead.id}`}
-                        className="text-xs text-muted-foreground hover:text-foreground transition underline-offset-2 hover:underline"
-                        data-testid={`view-lead-${lead.id}`}
-                      >
-                        Edit
-                      </Link>
-                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

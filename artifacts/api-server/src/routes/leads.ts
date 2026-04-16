@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, leadsTable, customersTable, usersTable } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, ne } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { sendFollowUpEmail } from "../lib/mailer";
 import {
@@ -22,6 +22,7 @@ function buildLeadSelect() {
     userId: leadsTable.userId,
     notes: leadsTable.notes,
     status: leadsTable.status,
+    isActive: leadsTable.isActive,
     followUpDate: leadsTable.followUpDate,
     dateKey: leadsTable.dateKey,
     metadata: leadsTable.metadata,
@@ -51,7 +52,7 @@ router.get("/leads", requireAuth, async (req, res): Promise<void> => {
   const { status, userId, followUpToday, followUpThisWeek } = qp.success ? qp.data : {};
 
   const isAdmin = req.user!.role === "admin";
-  const conditions = [];
+  const conditions = [eq(leadsTable.isActive, true)];
 
   if (!isAdmin) {
     conditions.push(eq(leadsTable.userId, req.user!.userId));
@@ -116,7 +117,18 @@ router.post("/leads", requireAuth, async (req, res): Promise<void> => {
     ...parsed.data,
     userId: req.user!.userId,
     dateKey,
+    isActive: true,
   }).returning();
+
+  await db
+    .update(leadsTable)
+    .set({ isActive: false })
+    .where(
+      and(
+        eq(leadsTable.customerId, parsed.data.customerId),
+        ne(leadsTable.id, lead.id)
+      )
+    );
 
   res.status(201).json(lead);
 });
