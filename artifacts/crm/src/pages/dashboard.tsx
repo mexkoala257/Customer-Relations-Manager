@@ -16,6 +16,7 @@ import {
   PlusCircle,
   MapPin,
   ArrowRight,
+  Target,
 } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -52,6 +53,78 @@ function StatCard({
       <div className="text-3xl font-bold tracking-tight">
         {value ?? "—"}
       </div>
+    </div>
+  );
+}
+
+function WeeklyGoalCard({
+  leadsThisWeek,
+  weeklyLeadGoal,
+}: {
+  leadsThisWeek: number | undefined;
+  weeklyLeadGoal: number | null | undefined;
+}) {
+  const count = leadsThisWeek ?? 0;
+  const goal = weeklyLeadGoal ?? null;
+  const hasGoal = goal !== null && goal > 0;
+  const pct = hasGoal ? Math.min(100, Math.round((count / goal!) * 100)) : null;
+  const met = hasGoal && count >= goal!;
+
+  return (
+    <div className={cn(
+      "rounded-xl p-5 border col-span-2 lg:col-span-1",
+      met ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800" : "bg-card border-card-border"
+    )}>
+      <div className="flex items-center justify-between mb-3">
+        <span className={cn(
+          "text-xs font-semibold uppercase tracking-wider",
+          met ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"
+        )}>
+          Leads This Week
+        </span>
+        <div className={cn(
+          "w-8 h-8 rounded-lg flex items-center justify-center",
+          met ? "bg-emerald-100 dark:bg-emerald-900" : "bg-muted"
+        )}>
+          <Target className={cn("w-4 h-4", met ? "text-emerald-600 dark:text-emerald-400" : "")} />
+        </div>
+      </div>
+
+      <div className="flex items-end gap-2 mb-3">
+        <span className={cn(
+          "text-3xl font-bold tracking-tight",
+          met && "text-emerald-700 dark:text-emerald-400"
+        )}>
+          {count}
+        </span>
+        {hasGoal && (
+          <span className="text-sm text-muted-foreground mb-1">/ {goal} goal</span>
+        )}
+      </div>
+
+      {hasGoal && (
+        <>
+          <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                met ? "bg-emerald-500" : "bg-primary"
+              )}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <p className={cn(
+            "text-xs mt-1.5",
+            met ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground"
+          )}>
+            {met ? "Goal reached!" : `${pct}% — ${goal! - count} more to reach goal`}
+          </p>
+        </>
+      )}
+
+      {!hasGoal && (
+        <p className="text-xs text-muted-foreground">No weekly goal set</p>
+      )}
     </div>
   );
 }
@@ -98,7 +171,10 @@ export default function DashboardPage() {
           <StatCard label="Total Customers" value={summary?.totalCustomers} icon={Building2} />
           <StatCard label="Total Leads" value={summary?.totalLeads} icon={Users} />
           <StatCard label="Close Win" value={summary?.wonLeads} icon={CheckCircle} />
-          <StatCard label="New" value={summary?.newLeads} icon={PlusCircle} />
+          <WeeklyGoalCard
+            leadsThisWeek={summary?.leadsThisWeek}
+            weeklyLeadGoal={summary?.weeklyLeadGoal}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

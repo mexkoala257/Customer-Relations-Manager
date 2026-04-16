@@ -3,12 +3,55 @@ import {
   useListUsers,
   useCreateUser,
   useDeleteUser,
+  useUpdateUser,
   getListUsersQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Trash2, Loader2, X } from "lucide-react";
+
+function GoalInput({ userId, currentGoal }: { userId: string; currentGoal: number | null | undefined }) {
+  const [value, setValue] = useState<string>(currentGoal != null ? String(currentGoal) : "");
+  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+
+  const updateMutation = useUpdateUser({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+        setSaving(false);
+      },
+      onError: () => {
+        setSaving(false);
+      },
+    },
+  });
+
+  function save() {
+    const num = value.trim() === "" ? null : parseInt(value.trim(), 10);
+    if (value.trim() !== "" && (isNaN(num!) || num! < 0)) return;
+    setSaving(true);
+    updateMutation.mutate({ id: userId, data: { weeklyLeadGoal: num } });
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="number"
+        min="0"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
+        placeholder="—"
+        className="w-20 px-2.5 py-1.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring text-center"
+        data-testid={`goal-input-${userId}`}
+      />
+      {saving && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+    </div>
+  );
+}
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
@@ -61,7 +104,7 @@ export default function AdminUsersPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold tracking-tight" data-testid="admin-users-title">
@@ -177,6 +220,9 @@ export default function AdminUsersPage() {
                     Role
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Weekly Goal
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Created
                   </th>
                   <th className="px-4 py-3" />
@@ -198,6 +244,9 @@ export default function AdminUsersPage() {
                         {user.role}
                       </span>
                     </td>
+                    <td className="px-4 py-3.5">
+                      <GoalInput userId={user.id} currentGoal={user.weeklyLeadGoal} />
+                    </td>
                     <td className="px-4 py-3.5 text-muted-foreground">
                       {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
                     </td>
@@ -216,6 +265,10 @@ export default function AdminUsersPage() {
             </table>
           </div>
         )}
+
+        <p className="text-xs text-muted-foreground mt-3">
+          Set a weekly lead goal per rep by typing a number in the Weekly Goal column and pressing Enter.
+        </p>
       </div>
     </AppLayout>
   );

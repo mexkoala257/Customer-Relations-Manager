@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, leadsTable, customersTable, usersTable } from "@workspace/db";
-import { eq, and, count, desc, sql } from "drizzle-orm";
+import { eq, and, count, desc, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
 const router = Router();
@@ -10,6 +10,14 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
   const userId = req.user!.userId;
 
   const today = new Date().toISOString().split("T")[0];
+
+  // Calculate the start of the current week (Monday)
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysFromMonday);
+  monday.setHours(0, 0, 0, 0);
 
   const [totalLeadsRow] = await db.select({ count: count() }).from(leadsTable);
   const [myLeadsRow] = await db
@@ -41,6 +49,20 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
         ? eq(leadsTable.status, "New")
         : and(eq(leadsTable.userId, userId), eq(leadsTable.status, "New"))
     );
+  const [leadsThisWeekRow] = await db
+    .select({ count: count() })
+    .from(leadsTable)
+    .where(
+      isAdmin
+        ? gte(leadsTable.createdAt, monday)
+        : and(eq(leadsTable.userId, userId), gte(leadsTable.createdAt, monday))
+    );
+
+  // Fetch the current user's weekly goal
+  const [userRow] = await db
+    .select({ weeklyLeadGoal: usersTable.weeklyLeadGoal })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
 
   res.json({
     totalLeads: Number(totalLeadsRow?.count ?? 0),
@@ -49,6 +71,8 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     totalCustomers: Number(totalCustomersRow?.count ?? 0),
     wonLeads: Number(wonLeadsRow?.count ?? 0),
     newLeads: Number(newLeadsRow?.count ?? 0),
+    leadsThisWeek: Number(leadsThisWeekRow?.count ?? 0),
+    weeklyLeadGoal: userRow?.weeklyLeadGoal ?? null,
   });
 });
 

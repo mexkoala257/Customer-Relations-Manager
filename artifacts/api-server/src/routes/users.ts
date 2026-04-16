@@ -19,6 +19,7 @@ router.get("/users", requireAdmin, async (_req, res): Promise<void> => {
     email: usersTable.email,
     staffId: usersTable.staffId,
     role: usersTable.role,
+    weeklyLeadGoal: usersTable.weeklyLeadGoal,
     createdAt: usersTable.createdAt,
   }).from(usersTable).orderBy(usersTable.createdAt);
   res.json(users);
@@ -93,6 +94,9 @@ router.patch("/users/:id", requireAuth, async (req, res): Promise<void> => {
   if (parsed.data.password) {
     updates.passwordHash = await bcrypt.hash(parsed.data.password, 10);
   }
+  if (parsed.data.weeklyLeadGoal !== undefined) {
+    updates.weeklyLeadGoal = parsed.data.weeklyLeadGoal;
+  }
 
   const [user] = await db.update(usersTable)
     .set(updates as Partial<typeof usersTable.$inferInsert>)
@@ -102,6 +106,7 @@ router.patch("/users/:id", requireAuth, async (req, res): Promise<void> => {
       email: usersTable.email,
       staffId: usersTable.staffId,
       role: usersTable.role,
+      weeklyLeadGoal: usersTable.weeklyLeadGoal,
       createdAt: usersTable.createdAt,
     });
 

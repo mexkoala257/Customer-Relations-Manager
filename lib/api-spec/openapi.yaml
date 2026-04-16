@@ -582,6 +582,9 @@ components:
         role:
           type: string
           enum: [admin, sales]
+        weeklyLeadGoal:
+          type: integer
+          nullable: true
 
     Customer:
       type: object
@@ -802,6 +805,11 @@ components:
           type: integer
         newLeads:
           type: integer
+        leadsThisWeek:
+          type: integer
+        weeklyLeadGoal:
+          type: integer
+          nullable: true
       required:
         - totalLeads
         - myLeads
@@ -809,6 +817,7 @@ components:
         - totalCustomers
         - wonLeads
         - newLeads
+        - leadsThisWeek
 
     StatusCount:
       type: object

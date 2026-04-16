@@ -60,6 +60,7 @@ export const ListUsersResponseItem = zod.object({
   email: zod.string(),
   staffId: zod.number(),
   role: zod.enum(["admin", "sales"]),
+  weeklyLeadGoal: zod.number().nullable().optional(),
   createdAt: zod.string().optional(),
 });
 export const ListUsersResponse = zod.array(ListUsersResponseItem);
@@ -101,6 +102,7 @@ export const UpdateUserBody = zod.object({
   password: zod.string().optional(),
   staffId: zod.number().optional(),
   role: zod.enum(["admin", "sales"]).optional(),
+  weeklyLeadGoal: zod.number().nullable().optional(),
 });
 
 export const UpdateUserResponse = zod.object({
@@ -445,6 +447,8 @@ export const GetDashboardSummaryResponse = zod.object({
   totalCustomers: zod.number(),
   wonLeads: zod.number(),
   newLeads: zod.number(),
+  leadsThisWeek: zod.number(),
+  weeklyLeadGoal: zod.number().nullable().optional(),
 });
 
 /**
