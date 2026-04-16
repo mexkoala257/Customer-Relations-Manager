@@ -22,6 +22,7 @@ export default function CustomerNewPage() {
     city: "",
     state: "",
     zipCode: "",
+    contactRole: "",
   });
 
   const createMutation = useCreateCustomer({
@@ -90,6 +91,23 @@ export default function CustomerNewPage() {
                   />
                 </div>
               ))}
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  Contact Role
+                </label>
+                <select
+                  value={form.contactRole}
+                  onChange={(e) => setForm((prev) => ({ ...prev, contactRole: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="customer-contactRole"
+                >
+                  <option value="">Select role...</option>
+                  <option value="Owner">Owner</option>
+                  <option value="Decision Maker">Decision Maker</option>
+                  <option value="Non Decision Maker">Non Decision Maker</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
             </div>
 
             <button

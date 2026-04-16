@@ -90,6 +90,13 @@ export default function CustomerDetailPage({ id }: { id: string }) {
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
             Contact Information
           </h2>
+          {(customer as any).contactRole && (
+            <div className="mb-3">
+              <span className="inline-block text-xs px-2.5 py-1 rounded-full font-semibold bg-accent/15 text-accent border border-accent/20">
+                {(customer as any).contactRole}
+              </span>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             {customer.phone && (
               <div className="flex items-start gap-2.5">

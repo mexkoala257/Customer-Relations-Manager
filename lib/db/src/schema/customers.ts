@@ -11,6 +11,7 @@ export const customersTable = pgTable("customers", {
   city: text("city"),
   state: text("state"),
   zipCode: text("zip_code"),
+  contactRole: text("contact_role"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -602,6 +602,8 @@ components:
           type: ["string", "null"]
         zipCode:
           type: ["string", "null"]
+        contactRole:
+          type: ["string", "null"]
         createdAt:
           type: string
       required:
@@ -627,6 +629,8 @@ components:
         state:
           type: ["string", "null"]
         zipCode:
+          type: ["string", "null"]
+        contactRole:
           type: ["string", "null"]
         createdAt:
           type: string
@@ -657,6 +661,8 @@ components:
           type: string
         zipCode:
           type: string
+        contactRole:
+          type: string
       required:
         - companyName
         - contactName
@@ -677,6 +683,8 @@ components:
         state:
           type: string
         zipCode:
+          type: string
+        contactRole:
           type: string
 
     Lead:

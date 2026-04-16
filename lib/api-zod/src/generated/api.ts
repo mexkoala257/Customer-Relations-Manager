@@ -134,6 +134,7 @@ export const ListCustomersResponseItem = zod.object({
   city: zod.string().nullish(),
   state: zod.string().nullish(),
   zipCode: zod.string().nullish(),
+  contactRole: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
 export const ListCustomersResponse = zod.array(ListCustomersResponseItem);
@@ -149,6 +150,7 @@ export const CreateCustomerBody = zod.object({
   city: zod.string().optional(),
   state: zod.string().optional(),
   zipCode: zod.string().optional(),
+  contactRole: zod.string().optional(),
 });
 
 /**
@@ -167,6 +169,7 @@ export const GetCustomerResponse = zod.object({
   city: zod.string().nullish(),
   state: zod.string().nullish(),
   zipCode: zod.string().nullish(),
+  contactRole: zod.string().nullish(),
   createdAt: zod.string().optional(),
   leads: zod.array(
     zod.object({
@@ -227,6 +230,7 @@ export const UpdateCustomerBody = zod.object({
   city: zod.string().optional(),
   state: zod.string().optional(),
   zipCode: zod.string().optional(),
+  contactRole: zod.string().optional(),
 });
 
 export const UpdateCustomerResponse = zod.object({
@@ -238,6 +242,7 @@ export const UpdateCustomerResponse = zod.object({
   city: zod.string().nullish(),
   state: zod.string().nullish(),
   zipCode: zod.string().nullish(),
+  contactRole: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
 

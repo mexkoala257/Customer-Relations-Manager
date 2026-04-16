@@ -31,6 +31,7 @@ export default function QuickEntryPage() {
     companyName: "",
     contactName: "",
     phone: "",
+    contactRole: "",
     streetAddress: "",
     city: "",
     state: "",
@@ -71,6 +72,7 @@ export default function QuickEntryPage() {
             companyName: customer.companyName,
             contactName: customer.contactName,
             phone: customer.phone || undefined,
+            contactRole: customer.contactRole || undefined,
             streetAddress: customer.streetAddress || undefined,
             city: customer.city || undefined,
             state: customer.state || undefined,
@@ -207,6 +209,23 @@ export default function QuickEntryPage() {
                         className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                         data-testid="customer-phone"
                       />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Contact Role
+                      </label>
+                      <select
+                        value={customer.contactRole}
+                        onChange={(e) => setCustomer((prev) => ({ ...prev, contactRole: e.target.value }))}
+                        className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        data-testid="customer-contactRole"
+                      >
+                        <option value="">Select role...</option>
+                        <option value="Owner">Owner</option>
+                        <option value="Decision Maker">Decision Maker</option>
+                        <option value="Non Decision Maker">Non Decision Maker</option>
+                        <option value="Other">Other</option>
+                      </select>
                     </div>
                   </div>
 
