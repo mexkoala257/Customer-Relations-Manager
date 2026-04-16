@@ -21,6 +21,7 @@ export const COLOR_THEMES: ColorTheme[] = [
 export interface AppSettings {
   companyName: string;
   accentColor: string;
+  logoUrl: string;
 }
 
 interface SettingsCtx {
@@ -30,7 +31,7 @@ interface SettingsCtx {
 }
 
 const Ctx = createContext<SettingsCtx>({
-  settings: { companyName: "SalesCRM", accentColor: "amber" },
+  settings: { companyName: "SalesCRM", accentColor: "amber", logoUrl: "" },
   updateSettings: async () => {},
   isLoading: true,
 });
@@ -47,7 +48,7 @@ function applyColorTheme(key: string) {
 }
 
 export function AppSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<AppSettings>({ companyName: "SalesCRM", accentColor: "amber" });
+  const [settings, setSettings] = useState<AppSettings>({ companyName: "SalesCRM", accentColor: "amber", logoUrl: "" });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

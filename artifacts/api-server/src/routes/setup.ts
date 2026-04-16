@@ -29,7 +29,7 @@ router.post("/setup", async (req, res): Promise<void> => {
 
   const { superadmin, branding, smtp, extraUsers } = req.body as {
     superadmin: { email: string; password: string };
-    branding: { companyName: string; accentColor: string };
+    branding: { companyName: string; accentColor: string; logoUrl?: string };
     smtp: { host: string; port: number; user: string; pass: string; fromName: string; secure: boolean };
     extraUsers?: Array<{ email: string; password: string; role: string }>;
   };
@@ -68,6 +68,7 @@ router.post("/setup", async (req, res): Promise<void> => {
   const settingRows: { key: string; value: string }[] = [
     { key: "company_name", value: (branding?.companyName || "SalesCRM").trim() },
     { key: "accent_color", value: branding?.accentColor || "amber" },
+    { key: "logo_url", value: branding?.logoUrl ?? "" },
   ];
 
   if (smtp?.host) {
@@ -93,7 +94,7 @@ router.post("/setup", async (req, res): Promise<void> => {
 
 router.post("/setup/reconfigure", requireSuperAdmin, async (req, res): Promise<void> => {
   const { branding, smtp, extraUsers } = req.body as {
-    branding: { companyName: string; accentColor: string };
+    branding: { companyName: string; accentColor: string; logoUrl?: string };
     smtp?: { host: string; port: number; user: string; pass: string; fromName: string; secure: boolean };
     extraUsers?: Array<{ email: string; password: string; role: string }>;
   };
@@ -103,6 +104,7 @@ router.post("/setup/reconfigure", requireSuperAdmin, async (req, res): Promise<v
   if (branding?.companyName?.trim()) {
     settingRows.push({ key: "company_name", value: branding.companyName.trim() });
     settingRows.push({ key: "accent_color", value: branding.accentColor || "amber" });
+    settingRows.push({ key: "logo_url", value: branding.logoUrl ?? "" });
   }
 
   if (smtp?.host) {

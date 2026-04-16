@@ -46,8 +46,12 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
-            <TrendingUp className="w-4 h-4 text-accent-foreground" />
+          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {settings.logoUrl ? (
+              <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <TrendingUp className="w-4 h-4 text-accent-foreground" />
+            )}
           </div>
           <div>
             <div className="font-bold text-sm text-white tracking-wide">{settings.companyName}</div>

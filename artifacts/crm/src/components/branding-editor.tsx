@@ -1,31 +1,64 @@
-import { useState, useEffect } from "react";
-import { Paintbrush, X, Check, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Paintbrush, X, Check, Loader2, Upload, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings, COLOR_THEMES } from "@/contexts/app-settings";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export function BrandingEditor() {
   const { userRole } = useAuth();
   const { settings, updateSettings } = useAppSettings();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(settings.companyName);
   const [color, setColor] = useState(settings.accentColor);
+  const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     setName(settings.companyName);
     setColor(settings.accentColor);
+    setLogoUrl(settings.logoUrl);
   }, [settings]);
 
   if (userRole !== "superadmin") return null;
 
+  async function handleLogoFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please upload an image file (PNG, JPG, SVG)", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Logo must be under 2 MB", variant: "destructive" });
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setLogoUrl(dataUrl);
+    } catch {
+      toast({ title: "Failed to read image", variant: "destructive" });
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
   async function save() {
     setSaving(true);
     try {
-      await updateSettings({ companyName: name, accentColor: color });
+      await updateSettings({ companyName: name, accentColor: color, logoUrl });
       toast({ title: "Branding saved" });
       setOpen(false);
     } catch {
@@ -38,6 +71,7 @@ export function BrandingEditor() {
   function cancel() {
     setName(settings.companyName);
     setColor(settings.accentColor);
+    setLogoUrl(settings.logoUrl);
     setOpen(false);
   }
 
@@ -64,7 +98,6 @@ export function BrandingEditor() {
         />
       )}
 
-      {/* Drawer — only in DOM when open */}
       {open && (
         <div className="fixed top-0 right-0 h-full w-80 z-50 bg-background border-l border-border shadow-2xl flex flex-col print:hidden">
           {/* Header */}
@@ -80,6 +113,57 @@ export function BrandingEditor() {
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+
+            {/* Logo */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
+                Logo
+              </label>
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden flex-shrink-0 bg-muted/30">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo preview" className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <span className="text-2xl select-none">🏢</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs hover:bg-muted transition disabled:opacity-50"
+                    data-testid="logo-upload-btn"
+                  >
+                    {uploadingLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    {logoUrl ? "Change logo" : "Upload logo"}
+                  </button>
+                  {logoUrl && (
+                    <button
+                      onClick={() => setLogoUrl("")}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs text-destructive hover:bg-destructive/10 transition"
+                      data-testid="logo-remove-btn"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">PNG, JPG or SVG · Max 2 MB · Square or wide logos work best</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleLogoFile(file);
+                  e.target.value = "";
+                }}
+                data-testid="logo-file-input"
+              />
+            </div>
+
             {/* Company Name */}
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
@@ -134,9 +218,13 @@ export function BrandingEditor() {
               <div className="rounded-xl border border-border overflow-hidden">
                 <div className="bg-sidebar p-3 flex items-center gap-2">
                   <div
-                    className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: activeTheme.preview }}
-                  />
+                    className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
+                    style={logoUrl ? {} : { backgroundColor: activeTheme.preview }}
+                  >
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                    ) : null}
+                  </div>
                   <div>
                     <div className="text-xs font-bold text-white leading-none">{name || "Company"}</div>
                     <div className="text-[10px] text-white/40 mt-0.5">Sales Portal</div>

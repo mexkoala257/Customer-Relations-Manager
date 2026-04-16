@@ -6,8 +6,9 @@ import { getToken } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   Shield, Building2, Palette, Mail, CheckCircle2,
-  Eye, EyeOff, Plus, Trash2, ChevronRight, Loader2, Send, RefreshCw,
+  Eye, EyeOff, Plus, Trash2, ChevronRight, Loader2, Send, RefreshCw, Upload,
 } from "lucide-react";
+import { useRef } from "react";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -19,7 +20,7 @@ interface ExtraUser {
 
 interface FormState {
   superadmin: { email: string; password: string; confirm: string };
-  branding: { companyName: string; accentColor: string };
+  branding: { companyName: string; accentColor: string; logoUrl: string };
   smtp: { host: string; port: string; user: string; pass: string; fromName: string; secure: boolean };
   extraUsers: ExtraUser[];
 }
@@ -37,10 +38,12 @@ export default function SetupPage() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoFileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<FormState>({
     superadmin: { email: "", password: "", confirm: "" },
-    branding: { companyName: "", accentColor: "amber" },
+    branding: { companyName: "", accentColor: "amber", logoUrl: "" },
     smtp: { host: "", port: "587", user: "", pass: "", fromName: "", secure: false },
     extraUsers: [],
   });
@@ -61,6 +64,7 @@ export default function SetupPage() {
             branding: {
               companyName: settings.companyName,
               accentColor: settings.accentColor,
+              logoUrl: settings.logoUrl || "",
             },
           }));
         }
@@ -68,6 +72,31 @@ export default function SetupPage() {
       .catch(() => {})
       .finally(() => setCheckingStatus(false));
   }, []);
+
+  async function handleLogoFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please upload an image file (PNG, JPG, SVG)", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Logo must be under 2 MB", variant: "destructive" });
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setBranding({ logoUrl: dataUrl });
+    } catch {
+      toast({ title: "Failed to read image", variant: "destructive" });
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
 
   function setSuperadmin(patch: Partial<FormState["superadmin"]>) {
     setForm((f) => ({ ...f, superadmin: { ...f.superadmin, ...patch } }));
@@ -151,7 +180,7 @@ export default function SetupPage() {
         });
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || "Update failed");
-        await updateSettings({ companyName: form.branding.companyName, accentColor: form.branding.accentColor });
+        await updateSettings({ companyName: form.branding.companyName, accentColor: form.branding.accentColor, logoUrl: form.branding.logoUrl });
       } else {
         const r = await fetch("/api/setup", {
           method: "POST",
@@ -321,6 +350,52 @@ export default function SetupPage() {
                 </div>
               </div>
               <div className="space-y-6">
+                {/* Logo upload */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Logo (optional)</label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-xl bg-slate-900 border-2 border-dashed border-slate-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {form.branding.logoUrl ? (
+                        <img src={form.branding.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+                      ) : (
+                        <span className="text-2xl select-none">🏢</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => logoFileRef.current?.click()}
+                        disabled={uploadingLogo}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm transition disabled:opacity-50"
+                      >
+                        {uploadingLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        {form.branding.logoUrl ? "Change" : "Upload logo"}
+                      </button>
+                      {form.branding.logoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setBranding({ logoUrl: "" })}
+                          className="text-xs text-slate-500 hover:text-red-400 text-left transition"
+                        >
+                          Remove logo
+                        </button>
+                      )}
+                      <p className="text-xs text-slate-600">PNG, JPG or SVG · Max 2 MB</p>
+                    </div>
+                  </div>
+                  <input
+                    ref={logoFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleLogoFile(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Company Name</label>
                   <input

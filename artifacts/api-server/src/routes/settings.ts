@@ -19,17 +19,22 @@ async function getAllSettings(): Promise<Record<string, string>> {
   return map;
 }
 
+function settingsResponse(settings: Record<string, string>) {
+  return {
+    companyName: settings.company_name,
+    accentColor: settings.accent_color,
+    logoUrl: settings.logo_url || "",
+  };
+}
+
 router.get("/settings", async (_req, res): Promise<void> => {
   const settings = await getAllSettings();
   res.setHeader("Cache-Control", "no-store");
-  res.json({
-    companyName: settings.company_name,
-    accentColor: settings.accent_color,
-  });
+  res.json(settingsResponse(settings));
 });
 
 router.patch("/settings", requireSuperAdmin, async (req, res): Promise<void> => {
-  const { companyName, accentColor } = req.body;
+  const { companyName, accentColor, logoUrl } = req.body;
 
   const updates: { key: string; value: string }[] = [];
   if (typeof companyName === "string" && companyName.trim()) {
@@ -37,6 +42,9 @@ router.patch("/settings", requireSuperAdmin, async (req, res): Promise<void> => 
   }
   if (typeof accentColor === "string") {
     updates.push({ key: "accent_color", value: accentColor });
+  }
+  if (typeof logoUrl === "string") {
+    updates.push({ key: "logo_url", value: logoUrl });
   }
 
   for (const { key, value } of updates) {
@@ -47,10 +55,7 @@ router.patch("/settings", requireSuperAdmin, async (req, res): Promise<void> => 
   }
 
   const settings = await getAllSettings();
-  res.json({
-    companyName: settings.company_name,
-    accentColor: settings.accent_color,
-  });
+  res.json(settingsResponse(settings));
 });
 
 export default router;

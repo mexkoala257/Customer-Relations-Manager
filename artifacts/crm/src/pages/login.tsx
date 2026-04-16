@@ -35,8 +35,12 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent mb-4">
-            <TrendingUp className="w-7 h-7 text-accent-foreground" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent mb-4 overflow-hidden">
+            {settings.logoUrl ? (
+              <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+            ) : (
+              <TrendingUp className="w-7 h-7 text-accent-foreground" />
+            )}
           </div>
           <h1 className="text-2xl font-bold text-white">{settings.companyName}</h1>
           <p className="text-sm text-white/50 mt-1">Sign in to your account</p>
