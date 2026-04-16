@@ -8,9 +8,11 @@ import dashboardRouter from "./dashboard";
 import remindersRouter from "./reminders";
 import teamRouter from "./team";
 import settingsRouter from "./settings";
+import setupRouter from "./setup";
 
 const router: IRouter = Router();
 
+router.use(setupRouter);
 router.use(healthRouter);
 router.use(authRouter);
 router.use(usersRouter);

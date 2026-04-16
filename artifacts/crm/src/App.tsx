@@ -6,8 +6,10 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { getToken } from "@/lib/api";
 import { AppSettingsProvider } from "@/contexts/app-settings";
 import { BrandingEditor } from "@/components/branding-editor";
+import { useEffect, useState } from "react";
 
 import LoginPage from "@/pages/login";
+import SetupPage from "@/pages/setup";
 import DashboardPage from "@/pages/dashboard";
 import LeadsPage from "@/pages/leads";
 import LeadDetailPage from "@/pages/lead-detail";
@@ -59,69 +61,104 @@ function ProtectedRoute({ component: Component, adminOnly = false, ...props }: {
   return <Component {...props} />;
 }
 
+function SetupGuard({ children }: { children: React.ReactNode }) {
+  const [location, navigate] = useLocation();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    if (location === "/setup") {
+      setChecking(false);
+      return;
+    }
+    fetch("/api/setup/status")
+      .then((r) => r.json())
+      .then((data: { needed: boolean }) => {
+        if (data.needed) {
+          navigate("/setup");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setChecking(false));
+  }, []);
+
+  if (checking && location !== "/setup") {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function AppRouter() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <Switch>
-      <Route path="/login">
-        {isAuthenticated ? <Redirect to="/" /> : <LoginPage />}
-      </Route>
+    <SetupGuard>
+      <Switch>
+        <Route path="/setup" component={SetupPage} />
 
-      <Route path="/">
-        <ProtectedRoute component={DashboardPage} />
-      </Route>
+        <Route path="/login">
+          {isAuthenticated ? <Redirect to="/" /> : <LoginPage />}
+        </Route>
 
-      <Route path="/new">
-        <ProtectedRoute component={QuickEntryPage} />
-      </Route>
+        <Route path="/">
+          <ProtectedRoute component={DashboardPage} />
+        </Route>
 
-      <Route path="/leads/new">
-        <ProtectedRoute component={LeadNewPage} />
-      </Route>
+        <Route path="/new">
+          <ProtectedRoute component={QuickEntryPage} />
+        </Route>
 
-      <Route path="/leads/:id">
-        {(params) => <ProtectedRoute component={LeadDetailPage} id={params.id} />}
-      </Route>
+        <Route path="/leads/new">
+          <ProtectedRoute component={LeadNewPage} />
+        </Route>
 
-      <Route path="/leads">
-        <ProtectedRoute component={LeadsPage} />
-      </Route>
+        <Route path="/leads/:id">
+          {(params) => <ProtectedRoute component={LeadDetailPage} id={params.id} />}
+        </Route>
 
-      <Route path="/customers/new">
-        <ProtectedRoute component={CustomerNewPage} />
-      </Route>
+        <Route path="/leads">
+          <ProtectedRoute component={LeadsPage} />
+        </Route>
 
-      <Route path="/customers/:id">
-        {(params) => <ProtectedRoute component={CustomerDetailPage} id={params.id} />}
-      </Route>
+        <Route path="/customers/new">
+          <ProtectedRoute component={CustomerNewPage} />
+        </Route>
 
-      <Route path="/customers">
-        <ProtectedRoute component={CustomersPage} />
-      </Route>
+        <Route path="/customers/:id">
+          {(params) => <ProtectedRoute component={CustomerDetailPage} id={params.id} />}
+        </Route>
 
-      <Route path="/admin/users">
-        <ProtectedRoute component={AdminUsersPage} adminOnly />
-      </Route>
+        <Route path="/customers">
+          <ProtectedRoute component={CustomersPage} />
+        </Route>
 
-      <Route path="/admin/reminders">
-        <ProtectedRoute component={AdminRemindersPage} adminOnly />
-      </Route>
+        <Route path="/admin/users">
+          <ProtectedRoute component={AdminUsersPage} adminOnly />
+        </Route>
 
-      <Route path="/admin/reports">
-        <ProtectedRoute component={AdminReportsPage} adminOnly />
-      </Route>
+        <Route path="/admin/reminders">
+          <ProtectedRoute component={AdminRemindersPage} adminOnly />
+        </Route>
 
-      <Route path="/settings">
-        <ProtectedRoute component={SettingsPage} />
-      </Route>
+        <Route path="/admin/reports">
+          <ProtectedRoute component={AdminReportsPage} adminOnly />
+        </Route>
 
-      <Route path="/team">
-        <ProtectedRoute component={TeamPage} />
-      </Route>
+        <Route path="/settings">
+          <ProtectedRoute component={SettingsPage} />
+        </Route>
 
-      <Route component={NotFound} />
-    </Switch>
+        <Route path="/team">
+          <ProtectedRoute component={TeamPage} />
+        </Route>
+
+        <Route component={NotFound} />
+      </Switch>
+    </SetupGuard>
   );
 }
 

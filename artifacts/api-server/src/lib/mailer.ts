@@ -1,31 +1,48 @@
 import nodemailer from "nodemailer";
 import { logger } from "./logger";
+import { db, appSettingsTable } from "@workspace/db";
 
-function createTransporter() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+async function getSmtpSettings(): Promise<Record<string, string>> {
+  try {
+    const rows = await db.select().from(appSettingsTable);
+    const map: Record<string, string> = {};
+    for (const row of rows) {
+      map[row.key] = row.value;
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+async function createTransporter() {
+  const dbSettings = await getSmtpSettings();
+
+  const host = dbSettings["smtp_host"] || process.env.SMTP_HOST;
+  const user = dbSettings["smtp_user"] || process.env.SMTP_USER;
+  const pass = dbSettings["smtp_pass"] || process.env.SMTP_PASS;
+  const port = Number(dbSettings["smtp_port"] || process.env.SMTP_PORT) || 587;
+  const secure = dbSettings["smtp_secure"] === "true";
 
   if (!host || !user || !pass) {
     logger.warn("SMTP credentials not configured — emails will be logged only");
-    return null;
+    return { transporter: null, from: null };
   }
 
-  return nodemailer.createTransport({
-    host,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false,
-    auth: { user, pass },
-  });
+  const fromName = dbSettings["smtp_from_name"] || dbSettings["company_name"] || "SalesCRM";
+  const from = `"${fromName}" <${user}>`;
+
+  const transporter = nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
+  return { transporter, from };
 }
 
 async function deliver(to: string, subject: string, html: string, text: string): Promise<{ sent: boolean; message: string }> {
-  const transporter = createTransporter();
+  const { transporter, from } = await createTransporter();
   if (!transporter) {
     logger.info({ to, subject }, "Email would be sent (SMTP not configured)");
     return { sent: false, message: "SMTP not configured, email logged only" };
   }
-  await transporter.sendMail({ from: process.env.SMTP_USER, to, subject, html, text });
+  await transporter.sendMail({ from, to, subject, html, text });
   return { sent: true, message: "Email sent successfully" };
 }
 
