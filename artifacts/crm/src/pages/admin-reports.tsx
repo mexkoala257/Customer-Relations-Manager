@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   useListLeads,
   useListUsers,
@@ -7,12 +7,18 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { STATUS_BADGE } from "@/lib/lead-status";
+import { getToken } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import {
   Printer,
   AlertTriangle,
   Sparkles,
   Users,
   FileText,
+  Download,
+  Database,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
 function formatDate(dateStr?: string | null) {
@@ -77,6 +83,43 @@ export default function AdminReportsPage() {
   const { data: leadsRaw, isLoading: leadsLoading } = useListLeads({});
   const { data: usersRaw, isLoading: usersLoading } = useListUsers();
   const reportRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const [exporting, setExporting] = useState(false);
+  const [lastExport, setLastExport] = useState<string | null>(null);
+
+  async function downloadBackup() {
+    setExporting(true);
+    try {
+      const token = getToken();
+      const r = await fetch("/api/admin/export", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) throw new Error("Export failed");
+
+      const blob = await r.blob();
+      const disposition = r.headers.get("Content-Disposition") ?? "";
+      const nameMatch = disposition.match(/filename="([^"]+)"/);
+      const filename = nameMatch?.[1] ?? `crm-backup-${new Date().toISOString().slice(0, 10)}.json`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      const now = new Date().toLocaleString("en-US", {
+        month: "short", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit",
+      });
+      setLastExport(now);
+      toast({ title: "Backup downloaded", description: filename });
+    } catch {
+      toast({ title: "Export failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const leads: Lead[] = (leadsRaw as any) ?? [];
   const users: User[] = ((usersRaw as any) ?? []).filter((u: User) => u.role !== "admin");
@@ -125,6 +168,52 @@ export default function AdminReportsPage() {
     <AppLayout>
       {/* ── Screen-only controls ─────────────────────────────────────────── */}
       <div className="print:hidden max-w-5xl mx-auto px-4 py-6">
+
+        {/* ── Data Backup card ───────────────────────────────────────────── */}
+        <div className="mb-8 bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="px-6 py-5 flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <Database className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h2 className="font-bold text-foreground text-base">Data Backup</h2>
+                <p className="text-sm text-muted-foreground mt-0.5 max-w-md">
+                  Download a full JSON backup of all leads, customers, users, team messages, and settings. Save this file offsite to protect against data loss.
+                </p>
+                {lastExport && (
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-emerald-600">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Last exported {lastExport}
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={downloadBackup}
+              disabled={exporting}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition disabled:opacity-50 flex-shrink-0"
+              data-testid="export-backup-btn"
+            >
+              {exporting
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Download className="w-4 h-4" />
+              }
+              {exporting ? "Exporting…" : "Export Backup"}
+            </button>
+          </div>
+          <div className="px-6 py-3 bg-muted/40 border-t border-border">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+              <span>✓ Leads &amp; pipeline data</span>
+              <span>✓ Customer profiles</span>
+              <span>✓ Team accounts (no passwords)</span>
+              <span>✓ Team messages &amp; updates</span>
+              <span>✓ App settings</span>
+              <span className="text-amber-600">✗ Photos &amp; documents excluded</span>
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">

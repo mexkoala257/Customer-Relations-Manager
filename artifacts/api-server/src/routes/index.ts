@@ -9,6 +9,7 @@ import remindersRouter from "./reminders";
 import teamRouter from "./team";
 import settingsRouter from "./settings";
 import setupRouter from "./setup";
+import exportRouter from "./export";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(dashboardRouter);
 router.use(remindersRouter);
 router.use(teamRouter);
 router.use(settingsRouter);
+router.use(exportRouter);
 
 export default router;
