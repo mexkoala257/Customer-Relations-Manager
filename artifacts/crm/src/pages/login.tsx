@@ -100,28 +100,6 @@ export default function LoginPage() {
               {loginMutation.isPending ? "Signing in..." : "Sign In"}
             </button>
           </form>
-
-          <div className="mt-6 pt-5 border-t border-border">
-            <p className="text-xs text-muted-foreground text-center mb-2 font-medium">Demo credentials</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => { setEmail("admin@crm.com"); setPassword("admin123"); }}
-                className="px-3 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted transition text-center"
-              >
-                <div className="font-medium text-foreground">Admin</div>
-                <div>admin@crm.com</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setEmail("sarah@crm.com"); setPassword("sales123"); }}
-                className="px-3 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted transition text-center"
-              >
-                <div className="font-medium text-foreground">Sales Rep</div>
-                <div>sarah@crm.com</div>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
