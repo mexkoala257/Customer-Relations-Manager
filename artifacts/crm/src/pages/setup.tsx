@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Shield, Building2, Palette, Mail, CheckCircle2,
   Eye, EyeOff, Plus, Trash2, ChevronRight, Loader2, Send, RefreshCw, Upload,
+  ArrowLeft, AlertTriangle, RotateCcw, FileJson, X,
 } from "lucide-react";
 import { useRef } from "react";
 
@@ -40,6 +41,16 @@ export default function SetupPage() {
   const [showSmtpPass, setShowSmtpPass] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoFileRef = useRef<HTMLInputElement>(null);
+
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [restorePreview, setRestorePreview] = useState<null | {
+    exportedAt: string;
+    counts: Record<string, number>;
+    raw: any;
+  }>(null);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreConfirm, setRestoreConfirm] = useState(false);
+  const restoreFileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<FormState>({
     superadmin: { email: "", password: "", confirm: "" },
@@ -95,6 +106,57 @@ export default function SetupPage() {
       toast({ title: "Failed to read image", variant: "destructive" });
     } finally {
       setUploadingLogo(false);
+    }
+  }
+
+  async function handleRestoreFile(file: File) {
+    if (!file.name.endsWith(".json")) {
+      toast({ title: "Please select a .json backup file", variant: "destructive" });
+      return;
+    }
+    try {
+      const text = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+      const parsed = JSON.parse(text);
+      if (!parsed.tables) throw new Error("Not a valid CRM backup file");
+      setRestorePreview({
+        exportedAt: parsed.exportedAt ?? "unknown",
+        counts: parsed.counts ?? {},
+        raw: parsed,
+      });
+      setRestoreConfirm(false);
+    } catch (e: any) {
+      toast({ title: "Invalid backup file", description: e.message, variant: "destructive" });
+    }
+  }
+
+  async function performRestore() {
+    if (!restorePreview) return;
+    setRestoring(true);
+    try {
+      const token = getToken();
+      const r = await fetch("/api/admin/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(restorePreview.raw),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Restore failed");
+      toast({
+        title: "Restore complete",
+        description: `Restored ${data.restored.customers} customers, ${data.restored.leads} leads.`,
+      });
+      setRestoreOpen(false);
+      setRestorePreview(null);
+      setRestoreConfirm(false);
+    } catch (err: any) {
+      toast({ title: "Restore failed", description: err.message, variant: "destructive" });
+    } finally {
+      setRestoring(false);
     }
   }
 
@@ -233,6 +295,21 @@ export default function SetupPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
+
+        {/* Back to dashboard button — reconfigure only */}
+        {isReconfigure && step < 5 && (
+          <div className="mb-6">
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition group"
+              data-testid="setup-back-dashboard"
+            >
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              Back to Dashboard
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 mb-4">
@@ -247,6 +324,137 @@ export default function SetupPage() {
               : "Configure your CRM before your first login"}
           </p>
         </div>
+
+        {/* Restore from backup — reconfigure only, shown before wizard */}
+        {isReconfigure && step < 5 && (
+          <div className="mb-6">
+            {!restoreOpen ? (
+              <button
+                onClick={() => setRestoreOpen(true)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-700 hover:border-slate-500 bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-sm transition"
+                data-testid="restore-open-btn"
+              >
+                <RotateCcw className="w-4 h-4 flex-shrink-0" />
+                <span>Restore data from a backup file</span>
+                <ChevronRight className="w-4 h-4 ml-auto" />
+              </button>
+            ) : (
+              <div className="bg-slate-800/80 border border-slate-700 rounded-2xl overflow-hidden">
+                {/* Restore header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <RotateCcw className="w-4 h-4 text-amber-400" />
+                    <span className="text-white font-semibold text-sm">Restore from Backup</span>
+                  </div>
+                  <button
+                    onClick={() => { setRestoreOpen(false); setRestorePreview(null); setRestoreConfirm(false); }}
+                    className="text-slate-500 hover:text-slate-300 transition"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  {!restorePreview ? (
+                    <>
+                      <p className="text-slate-400 text-sm">
+                        Upload a <code className="text-amber-400 bg-slate-900 px-1 rounded">crm-backup-*.json</code> file to restore all leads, customers, and messages.
+                      </p>
+                      <button
+                        onClick={() => restoreFileRef.current?.click()}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-slate-600 hover:border-amber-500 text-slate-400 hover:text-amber-400 text-sm transition w-full justify-center"
+                        data-testid="restore-upload-btn"
+                      >
+                        <FileJson className="w-4 h-4" />
+                        Select backup JSON file
+                      </button>
+                      <input
+                        ref={restoreFileRef}
+                        type="file"
+                        accept=".json,application/json"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleRestoreFile(f);
+                          e.target.value = "";
+                        }}
+                        data-testid="restore-file-input"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      {/* Preview card */}
+                      <div className="bg-slate-900 rounded-xl p-4 space-y-2">
+                        <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold mb-3">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Valid backup file
+                        </div>
+                        <div className="text-xs text-slate-500 mb-3">
+                          Exported: {new Date(restorePreview.exportedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {Object.entries(restorePreview.counts).map(([k, v]) => (
+                            <div key={k} className="flex justify-between bg-slate-800 rounded-lg px-3 py-2">
+                              <span className="text-slate-400 capitalize">{k}</span>
+                              <span className="text-white font-bold">{v as number}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Warning */}
+                      <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-amber-300 text-xs leading-relaxed">
+                          This will <strong>replace all</strong> existing customers, leads, and messages with data from the backup. This cannot be undone.
+                        </p>
+                      </div>
+
+                      {!restoreConfirm ? (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setRestorePreview(null); }}
+                            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700 text-sm transition"
+                          >
+                            Choose different file
+                          </button>
+                          <button
+                            onClick={() => setRestoreConfirm(true)}
+                            className="flex-1 px-4 py-2.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-sm font-semibold transition"
+                            data-testid="restore-confirm-btn"
+                          >
+                            I understand, restore
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-center text-xs text-slate-400">Are you sure? This cannot be undone.</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setRestoreConfirm(false)}
+                              className="flex-1 px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700 text-sm transition"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={performRestore}
+                              disabled={restoring}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold transition disabled:opacity-50"
+                              data-testid="restore-execute-btn"
+                            >
+                              {restoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                              {restoring ? "Restoring…" : "Yes, restore now"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Step indicators */}
         {step < 5 && (
