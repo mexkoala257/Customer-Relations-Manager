@@ -770,6 +770,9 @@ components:
           enum: [New, Qualify, Discovery, Proposal, Negotiate, Close Loss, Close Win, Maintain, Grow]
         followUpDate:
           type: ["string", "null"]
+        userId:
+          type: string
+          description: Reassign lead to a different sales rep (admin only)
         metadata:
           type: object
 

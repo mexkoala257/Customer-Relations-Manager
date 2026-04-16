@@ -3,13 +3,15 @@ import { Link, useLocation } from "wouter";
 import {
   useGetLead,
   useUpdateLead,
+  useListUsers,
   getGetLeadQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, MapPin, Loader2, Save } from "lucide-react";
+import { ArrowLeft, MapPin, Loader2, Save, UserCog } from "lucide-react";
 
 import { LEAD_STATUSES } from "@/lib/lead-status";
 const STATUS_OPTIONS = [...LEAD_STATUSES];
@@ -18,20 +20,30 @@ export default function LeadDetailPage({ id }: { id: string }) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { userRole } = useAuth();
+  const isAdmin = userRole === "admin";
 
   const { data: lead, isLoading } = useGetLead(id, {
     query: { queryKey: getGetLeadQueryKey(id), enabled: !!id },
   });
 
+  const { data: users } = useListUsers({
+    query: { enabled: isAdmin },
+  });
+
+  const salesReps = (users ?? []).filter((u) => u.role === "sales");
+
   const [status, setStatus] = useState("");
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
+  const [repId, setRepId] = useState("");
 
   useEffect(() => {
     if (lead) {
       setStatus(lead.status);
       setNotes(lead.notes ?? "");
       setFollowUpDate(lead.followUpDate ?? "");
+      setRepId(lead.userId ?? "");
     }
   }, [lead]);
 
@@ -49,14 +61,13 @@ export default function LeadDetailPage({ id }: { id: string }) {
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    updateMutation.mutate({
-      id,
-      data: {
-        status: status as typeof LEAD_STATUSES[number],
-        notes,
-        followUpDate: followUpDate || null,
-      },
-    });
+    const data: Parameters<typeof updateMutation.mutate>[0]["data"] = {
+      status: status as typeof LEAD_STATUSES[number],
+      notes,
+      followUpDate: followUpDate || null,
+    };
+    if (isAdmin && repId) data.userId = repId;
+    updateMutation.mutate({ id, data });
   }
 
   function buildMapsUrl() {
@@ -156,6 +167,32 @@ export default function LeadDetailPage({ id }: { id: string }) {
             Lead Details
           </h2>
           <form onSubmit={handleSave} className="space-y-4">
+
+            {/* Admin-only: Assign Rep */}
+            {isAdmin && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <UserCog className="w-3.5 h-3.5" />
+                  Assigned Rep
+                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-700 font-semibold ml-1">
+                    Admin
+                  </span>
+                </label>
+                <select
+                  value={repId}
+                  onChange={(e) => setRepId(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="lead-rep-select"
+                >
+                  {salesReps.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.email} {u.staffId ? `(${u.staffId})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">Status</label>
               <select

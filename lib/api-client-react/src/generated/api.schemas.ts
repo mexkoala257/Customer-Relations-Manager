@@ -247,6 +247,8 @@ export interface UpdateLeadBody {
   status?: UpdateLeadBodyStatus;
   /** @nullable */
   followUpDate?: string | null;
+  /** Reassign lead to a different sales rep (admin only) */
+  userId?: string;
   metadata?: UpdateLeadBodyMetadata;
 }
 

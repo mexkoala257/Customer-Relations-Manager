@@ -4,6 +4,7 @@ import {
   useListLeads,
   useDeleteLead,
   useUpdateLead,
+  useListUsers,
   useSendFollowupEmail,
   getListLeadsQueryKey,
 } from "@workspace/api-client-react";
@@ -23,6 +24,7 @@ import {
   CalendarDays,
   List,
   AlertCircle,
+  UserCog,
 } from "lucide-react";
 
 import { LEAD_STATUSES, STATUS_BADGE } from "@/lib/lead-status";
@@ -89,6 +91,73 @@ function InlineStatusSelect({
         <Loader2 className="absolute right-1.5 w-3 h-3 animate-spin pointer-events-none" />
       ) : (
         <ChevronDown className="absolute right-1.5 w-3 h-3 pointer-events-none opacity-60" />
+      )}
+    </div>
+  );
+}
+
+/* ── Inline rep selector (admin only) ──────────────────────────────────── */
+type User = { id: string; email: string; staffId?: string | null; role: string };
+
+function InlineRepSelect({
+  leadId,
+  currentRepId,
+  users,
+  onUpdated,
+}: {
+  leadId: string;
+  currentRepId: string;
+  users: User[];
+  onUpdated: () => void;
+}) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+
+  const updateMutation = useUpdateLead({
+    mutation: {
+      onSuccess: () => {
+        setSaving(false);
+        onUpdated();
+        toast({ title: "Rep reassigned" });
+      },
+      onError: () => {
+        setSaving(false);
+        toast({ title: "Failed to reassign rep", variant: "destructive" });
+      },
+    },
+  });
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newRepId = e.target.value;
+    if (newRepId === currentRepId) return;
+    setSaving(true);
+    updateMutation.mutate({ id: leadId, data: { userId: newRepId } });
+  }
+
+  const salesReps = users.filter((u) => u.role === "sales");
+
+  return (
+    <div className="relative inline-flex items-center">
+      <select
+        value={currentRepId}
+        onChange={handleChange}
+        disabled={saving}
+        className={cn(
+          "appearance-none text-xs rounded-lg pl-2 pr-6 py-1 bg-muted/60 border border-border text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer transition-opacity",
+          saving && "opacity-50"
+        )}
+        data-testid={`rep-select-${leadId}`}
+      >
+        {salesReps.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.email.split("@")[0]}{u.staffId ? ` (${u.staffId})` : ""}
+          </option>
+        ))}
+      </select>
+      {saving ? (
+        <Loader2 className="absolute right-1.5 w-3 h-3 animate-spin pointer-events-none text-muted-foreground" />
+      ) : (
+        <ChevronDown className="absolute right-1.5 w-3 h-3 pointer-events-none opacity-40" />
       )}
     </div>
   );
@@ -193,9 +262,12 @@ export default function LeadsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { userRole } = useAuth();
+  const isAdmin = userRole === "admin";
 
   const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [statusFilter, setStatusFilter] = useState("");
+
+  const { data: allUsers } = useListUsers({ query: { enabled: isAdmin } });
 
   const allParams = statusFilter ? { status: statusFilter } : {};
   const weekParams = { followUpThisWeek: "true" };
@@ -402,8 +474,13 @@ export default function LeadsPage() {
                                   />
                                 </td>
                                 {userRole === "admin" && (
-                                  <td className="px-4 py-3.5 text-muted-foreground text-xs">
-                                    {lead.user?.email?.split("@")[0]}
+                                  <td className="px-4 py-3.5">
+                                    <InlineRepSelect
+                                      leadId={lead.id}
+                                      currentRepId={lead.userId ?? ""}
+                                      users={allUsers ?? []}
+                                      onUpdated={refreshLeads}
+                                    />
                                   </td>
                                 )}
                                 <td className="px-4 py-3.5 text-muted-foreground max-w-[220px]">
@@ -485,8 +562,13 @@ export default function LeadsPage() {
                             {formatDate(lead.followUpDate)}
                           </td>
                           {userRole === "admin" && (
-                            <td className="px-4 py-3.5 text-muted-foreground text-xs">
-                              {lead.user?.email?.split("@")[0]}
+                            <td className="px-4 py-3.5">
+                              <InlineRepSelect
+                                leadId={lead.id}
+                                currentRepId={lead.userId ?? ""}
+                                users={allUsers ?? []}
+                                onUpdated={refreshLeads}
+                              />
                             </td>
                           )}
                           <td className="px-4 py-3.5 text-muted-foreground max-w-[200px]">

@@ -391,6 +391,10 @@ export const UpdateLeadBody = zod.object({
     ])
     .optional(),
   followUpDate: zod.string().nullish(),
+  userId: zod
+    .string()
+    .optional()
+    .describe("Reassign lead to a different sales rep (admin only)"),
   metadata: zod.object({}).passthrough().optional(),
 });
 

@@ -174,9 +174,14 @@ router.patch("/leads/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const updateData = { ...parsed.data };
+  if (!isAdmin) {
+    delete (updateData as Record<string, unknown>).userId;
+  }
+
   const [lead] = await db
     .update(leadsTable)
-    .set(parsed.data)
+    .set(updateData)
     .where(eq(leadsTable.id, params.data.id))
     .returning();
 
