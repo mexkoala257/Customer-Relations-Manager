@@ -37,6 +37,7 @@ export default function LeadDetailPage({ id }: { id: string }) {
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
   const [repId, setRepId] = useState("");
+  const [contactDate, setContactDate] = useState("");
   const [currentSupplier, setCurrentSupplier] = useState("");
   const [temperature, setTemperature] = useState<"" | "Hot" | "Medium" | "Cold">("");
   const [productsDiscussed, setProductsDiscussed] = useState("");
@@ -48,6 +49,7 @@ export default function LeadDetailPage({ id }: { id: string }) {
       setFollowUpDate(lead.followUpDate ?? "");
       setRepId(lead.userId ?? "");
       const meta = (lead.metadata ?? {}) as Record<string, string>;
+      setContactDate(meta.contactDate ?? new Date().toISOString().split("T")[0]);
       setCurrentSupplier(meta.currentSupplier ?? "");
       setTemperature((meta.temperature as "" | "Hot" | "Medium" | "Cold") ?? "");
       setProductsDiscussed(meta.productsDiscussed ?? "");
@@ -73,6 +75,7 @@ export default function LeadDetailPage({ id }: { id: string }) {
       notes,
       followUpDate: followUpDate || null,
       metadata: {
+        ...(contactDate ? { contactDate } : {}),
         ...(currentSupplier ? { currentSupplier } : {}),
         ...(temperature ? { temperature } : {}),
         ...(productsDiscussed ? { productsDiscussed } : {}),
@@ -217,6 +220,17 @@ export default function LeadDetailPage({ id }: { id: string }) {
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Contact Date</label>
+              <input
+                type="date"
+                value={contactDate}
+                onChange={(e) => setContactDate(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="lead-contact-date"
+              />
             </div>
 
             <div className="space-y-1.5">

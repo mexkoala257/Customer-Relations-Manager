@@ -22,6 +22,7 @@ export default function LeadNewPage() {
   const [status, setStatus] = useState("New");
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
+  const [contactDate, setContactDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [currentSupplier, setCurrentSupplier] = useState("");
   const [temperature, setTemperature] = useState<"" | "Hot" | "Medium" | "Cold">("");
   const [productsDiscussed, setProductsDiscussed] = useState("");
@@ -51,6 +52,7 @@ export default function LeadNewPage() {
         notes,
         followUpDate: followUpDate || undefined,
         metadata: {
+          ...(contactDate ? { contactDate } : {}),
           ...(currentSupplier ? { currentSupplier } : {}),
           ...(temperature ? { temperature } : {}),
           ...(productsDiscussed ? { productsDiscussed } : {}),
@@ -105,6 +107,19 @@ export default function LeadNewPage() {
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Contact Date
+              </label>
+              <input
+                type="date"
+                value={contactDate}
+                onChange={(e) => setContactDate(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="lead-contact-date"
+              />
             </div>
 
             <div className="space-y-1.5">

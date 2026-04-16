@@ -435,6 +435,12 @@ export default function CustomerDetailPage({ id }: { id: string }) {
                                   </span>
                                 )}
                               </div>
+                              {meta.contactDate && (
+                                <p className="text-xs mt-1 text-muted-foreground">
+                                  <span className="font-semibold">Contacted:</span>{" "}
+                                  {new Date(meta.contactDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                </p>
+                              )}
                               {meta.currentSupplier && (
                                 <p className="text-xs mt-1.5 text-muted-foreground">
                                   <span className="font-semibold">Current Supplier:</span> {meta.currentSupplier}

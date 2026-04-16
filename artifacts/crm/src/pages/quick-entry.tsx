@@ -44,6 +44,7 @@ export default function QuickEntryPage() {
     status: "New" as typeof STATUS_OPTIONS[number],
     notes: "",
     followUpDate: "",
+    contactDate: new Date().toISOString().split("T")[0],
     currentSupplier: "",
     temperature: "" as "" | "Hot" | "Medium" | "Cold",
     productsDiscussed: "",
@@ -92,6 +93,7 @@ export default function QuickEntryPage() {
           notes: lead.notes || undefined,
           followUpDate: lead.followUpDate || undefined,
           metadata: {
+            ...(lead.contactDate ? { contactDate: lead.contactDate } : {}),
             ...(lead.currentSupplier ? { currentSupplier: lead.currentSupplier } : {}),
             ...(lead.temperature ? { temperature: lead.temperature } : {}),
             ...(lead.productsDiscussed ? { productsDiscussed: lead.productsDiscussed } : {}),
@@ -353,6 +355,19 @@ export default function QuickEntryPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Contact Date
+                  </label>
+                  <input
+                    type="date"
+                    value={lead.contactDate}
+                    onChange={(e) => setLead((prev) => ({ ...prev, contactDate: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="lead-contact-date"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
