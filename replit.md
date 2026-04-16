@@ -39,9 +39,14 @@ A full-stack Sales CRM with:
 - Role-scoped lead access: sales reps see only their own leads; admins see all
 - Customer profiles with interaction history timeline
 - Lead pipeline management (9 statuses: New → Qualify → Discovery → Proposal → Negotiate → Close Win / Close Loss → Maintain → Grow)
+- Inline status pill selector on leads list (colour-coded, saves on change)
+- Inline rep reassignment (admin-only column in leads list)
+- "This Week" follow-up view — leads grouped by day (Overdue/Today/weekday), sorted by follow-up date
+- Lead deduplication via `isActive` flag — creating a new lead for a customer auto-archives all previous leads; archived leads shown with greyed-out "Archived" badge in customer history
 - Google Maps navigation links per lead (when customer has address)
 - Follow-up email endpoint (Nodemailer, SMTP env vars optional — logs if not configured)
-- Admin panel for user management (admin-only)
+- Admin panel for user management and reminder scheduling (admin-only)
+- **Reports page** (`/admin/reports`, admin-only): print-ready report with "Leads by Sales Rep", "Overdue Activity", and "New Activity (last 7 days)" sections; print/save-as-PDF via `window.print()` with `@media print` CSS
 - Dashboard with stats cards and lead status pie chart
 
 ### Demo Credentials

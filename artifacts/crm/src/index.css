@@ -273,3 +273,51 @@
     inset: -1px;
   }
 }
+
+@media print {
+  /* Hide all sidebar/nav/header chrome */
+  [data-sidebar],
+  aside,
+  nav,
+  header,
+  .print\:hidden,
+  [data-testid="print-report-btn"] {
+    display: none !important;
+  }
+
+  /* Remove main layout padding/margin so content fills page */
+  body, html {
+    background: white !important;
+    font-size: 11pt;
+  }
+
+  main, #root > * {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Ensure tables don't split mid-row */
+  tr {
+    break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  /* Page break utilities */
+  .print\:break-before-page {
+    break-before: page;
+  }
+
+  .print\:break-inside-avoid {
+    break-inside: avoid;
+  }
+
+  /* Colour-coded status badges must print with background */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

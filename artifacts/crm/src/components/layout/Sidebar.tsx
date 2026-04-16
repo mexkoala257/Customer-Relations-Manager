@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Zap,
   Bell,
+  FileText,
 } from "lucide-react";
 
 const navItems = [
@@ -23,6 +24,7 @@ const navItems = [
 const adminItems = [
   { label: "Manage Users", icon: Users, href: "/admin/users" },
   { label: "Reminders", icon: Bell, href: "/admin/reminders" },
+  { label: "Reports", icon: FileText, href: "/admin/reports" },
 ];
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -82,7 +84,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                   ? "bg-accent text-accent-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               )}
-              data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+              data-testid={`nav-admin-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
             >
               <item.icon className="w-4 h-4 flex-shrink-0" />
               <span>{item.label}</span>
@@ -111,7 +113,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                       ? "bg-accent text-accent-foreground"
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                   )}
-                  data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                  data-testid={`nav-admin-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
                 >
                   <item.icon className="w-4 h-4 flex-shrink-0" />
                   <span>{item.label}</span>

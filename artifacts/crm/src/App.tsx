@@ -16,6 +16,7 @@ import CustomerNewPage from "@/pages/customer-new";
 import QuickEntryPage from "@/pages/quick-entry";
 import AdminUsersPage from "@/pages/admin-users";
 import AdminRemindersPage from "@/pages/admin-reminders";
+import AdminReportsPage from "@/pages/admin-reports";
 import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
@@ -102,6 +103,10 @@ function AppRouter() {
 
       <Route path="/admin/reminders">
         <ProtectedRoute component={AdminRemindersPage} adminOnly />
+      </Route>
+
+      <Route path="/admin/reports">
+        <ProtectedRoute component={AdminReportsPage} adminOnly />
       </Route>
 
       <Route path="/settings">
