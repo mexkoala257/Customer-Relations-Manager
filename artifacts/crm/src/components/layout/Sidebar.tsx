@@ -14,6 +14,7 @@ import {
   Bell,
   FileText,
   MessageSquare,
+  SlidersHorizontal,
 } from "lucide-react";
 
 const navItems = [
@@ -124,6 +125,22 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                 </Link>
               );
             })}
+            {userRole === "superadmin" && (
+              <Link
+                href="/setup"
+                onClick={onClose}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                  isActive("/setup")
+                    ? "bg-accent text-accent-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                )}
+                data-testid="nav-system-config"
+              >
+                <SlidersHorizontal className="w-4 h-4 flex-shrink-0" />
+                <span>System Config</span>
+              </Link>
+            )}
           </>
         )}
       </nav>

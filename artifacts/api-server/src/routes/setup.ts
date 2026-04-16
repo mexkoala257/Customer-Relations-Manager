@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 import { db, usersTable, appSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { requireSuperAdmin } from "../lib/auth";
 
 const router = Router();
 
@@ -88,6 +89,57 @@ router.post("/setup", async (req, res): Promise<void> => {
   }
 
   res.json({ ok: true, message: "Setup complete. You can now log in." });
+});
+
+router.post("/setup/reconfigure", requireSuperAdmin, async (req, res): Promise<void> => {
+  const { branding, smtp, extraUsers } = req.body as {
+    branding: { companyName: string; accentColor: string };
+    smtp?: { host: string; port: number; user: string; pass: string; fromName: string; secure: boolean };
+    extraUsers?: Array<{ email: string; password: string; role: string }>;
+  };
+
+  const settingRows: { key: string; value: string }[] = [];
+
+  if (branding?.companyName?.trim()) {
+    settingRows.push({ key: "company_name", value: branding.companyName.trim() });
+    settingRows.push({ key: "accent_color", value: branding.accentColor || "amber" });
+  }
+
+  if (smtp?.host) {
+    settingRows.push({ key: "smtp_host", value: smtp.host.trim() });
+    settingRows.push({ key: "smtp_port", value: String(smtp.port || 587) });
+    settingRows.push({ key: "smtp_user", value: smtp.user.trim() });
+    settingRows.push({ key: "smtp_pass", value: smtp.pass });
+    settingRows.push({ key: "smtp_from_name", value: (smtp.fromName || branding?.companyName || "SalesCRM").trim() });
+    settingRows.push({ key: "smtp_secure", value: smtp.secure ? "true" : "false" });
+  }
+
+  for (const row of settingRows) {
+    await db
+      .insert(appSettingsTable)
+      .values(row)
+      .onConflictDoUpdate({ target: appSettingsTable.key, set: { value: row.value } });
+  }
+
+  if (extraUsers && Array.isArray(extraUsers)) {
+    const existing = await db.select({ email: usersTable.email }).from(usersTable);
+    const existingEmails = new Set(existing.map((u) => u.email.toLowerCase()));
+    let staffId = existing.length + 1;
+    for (const u of extraUsers) {
+      if (!u.email || !u.password) continue;
+      const normalized = u.email.trim().toLowerCase();
+      if (existingEmails.has(normalized)) continue;
+      const h = await bcrypt.hash(u.password, 10);
+      await db.insert(usersTable).values({
+        email: normalized,
+        passwordHash: h,
+        staffId: staffId++,
+        role: (u.role === "admin" || u.role === "sales") ? u.role : "sales",
+      }).onConflictDoNothing();
+    }
+  }
+
+  res.json({ ok: true, message: "Configuration updated." });
 });
 
 router.post("/setup/test-email", async (req, res): Promise<void> => {
