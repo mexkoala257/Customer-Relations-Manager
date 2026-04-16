@@ -9,7 +9,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Trash2, Loader2, X } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, X, KeyRound, Eye, EyeOff } from "lucide-react";
 
 function GoalInput({ userId, currentGoal }: { userId: string; currentGoal: number | null | undefined }) {
   const [value, setValue] = useState<string>(currentGoal != null ? String(currentGoal) : "");
@@ -53,11 +53,142 @@ function GoalInput({ userId, currentGoal }: { userId: string; currentGoal: numbe
   );
 }
 
+interface ResetPasswordModalProps {
+  userId: string;
+  userEmail: string;
+  onClose: () => void;
+}
+
+function ResetPasswordModal({ userId, userEmail, onClose }: ResetPasswordModalProps) {
+  const { toast } = useToast();
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateMutation = useUpdateUser({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: `Password reset for ${userEmail}` });
+        onClose();
+      },
+      onError: () => {
+        setError("Failed to reset password. Please try again.");
+      },
+    },
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (newPassword.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    updateMutation.mutate({ id: userId, data: { password: newPassword } });
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-card border border-card-border rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-muted-foreground" />
+            <h2 className="font-semibold text-sm">Reset Password</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg hover:bg-muted text-muted-foreground transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-5">
+          Setting a new password for <span className="font-medium text-foreground">{userEmail}</span>.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+              New Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPw ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                autoFocus
+                placeholder="Min. 6 characters"
+                className="w-full px-4 py-3 pr-10 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="reset-new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                tabIndex={-1}
+              >
+                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              placeholder="Re-enter new password"
+              className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              data-testid="reset-confirm-password"
+            />
+          </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={updateMutation.isPending}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
+              data-testid="reset-password-confirm"
+            >
+              {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Reset Password
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminUsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", staffId: "", role: "sales" });
+  const [resetTarget, setResetTarget] = useState<{ id: string; email: string } | null>(null);
 
   const { data: users, isLoading } = useListUsers();
 
@@ -251,13 +382,23 @@ export default function AdminUsersPage() {
                       {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
                     </td>
                     <td className="px-4 py-3.5">
-                      <button
-                        onClick={() => handleDelete(user.id, user.email)}
-                        className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition"
-                        data-testid={`delete-user-${user.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1 justify-end">
+                        <button
+                          onClick={() => setResetTarget({ id: user.id, email: user.email })}
+                          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                          title="Reset password"
+                          data-testid={`reset-password-${user.id}`}
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user.id, user.email)}
+                          className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition"
+                          data-testid={`delete-user-${user.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -270,6 +411,15 @@ export default function AdminUsersPage() {
           Set a weekly lead goal per rep by typing a number in the Weekly Goal column and pressing Enter.
         </p>
       </div>
+
+      {/* Reset Password Modal */}
+      {resetTarget && (
+        <ResetPasswordModal
+          userId={resetTarget.id}
+          userEmail={resetTarget.email}
+          onClose={() => setResetTarget(null)}
+        />
+      )}
     </AppLayout>
   );
 }
