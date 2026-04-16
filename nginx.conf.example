@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Sales CRM — Nginx Reverse Proxy Configuration Example
+#  Copy to /etc/nginx/sites-available/salescrm and symlink to sites-enabled/
+# ─────────────────────────────────────────────────────────────────────────────
+
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+
+    # Redirect HTTP to HTTPS (uncomment after setting up SSL with Certbot)
+    # return 301 https://$host$request_uri;
+
+    # ── API — proxy to Express on port 8080 ──────────────────────────────────
+    location /api/ {
+        proxy_pass         http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+
+        # Allow larger payloads for file uploads (photos, documents, backups)
+        client_max_body_size 25M;
+    }
+
+    # ── Frontend — serve Vite static build ──────────────────────────────────
+    location / {
+        root  /var/www/salescrm;   # path to artifacts/crm/dist/public after build
+        index index.html;
+        try_files $uri $uri/ /index.html;  # client-side routing fallback
+    }
+}
+
+# ── HTTPS (Certbot will auto-populate this block) ───────────────────────────
+# Run: sudo certbot --nginx -d yourdomain.com
