@@ -20,7 +20,7 @@ export function BrandingEditor() {
     setColor(settings.accentColor);
   }, [settings]);
 
-  if (userRole !== "admin") return null;
+  if (userRole !== "superadmin") return null;
 
   async function save() {
     setSaving(true);

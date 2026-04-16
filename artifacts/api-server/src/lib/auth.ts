@@ -41,8 +41,18 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   requireAuth(req, res, () => {
-    if (req.user?.role !== "admin") {
+    if (req.user?.role !== "admin" && req.user?.role !== "superadmin") {
       res.status(403).json({ error: "Forbidden: admin only" });
+      return;
+    }
+    next();
+  });
+}
+
+export function requireSuperAdmin(req: Request, res: Response, next: NextFunction): void {
+  requireAuth(req, res, () => {
+    if (req.user?.role !== "superadmin") {
+      res.status(403).json({ error: "Forbidden: superadmin only" });
       return;
     }
     next();

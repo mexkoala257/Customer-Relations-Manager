@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, appSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAuth, requireAdmin } from "../lib/auth";
+import { requireSuperAdmin } from "../lib/auth";
 
 const router = Router();
 
@@ -27,7 +27,7 @@ router.get("/settings", async (_req, res): Promise<void> => {
   });
 });
 
-router.patch("/settings", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.patch("/settings", requireSuperAdmin, async (req, res): Promise<void> => {
   const { companyName, accentColor } = req.body;
 
   const updates: { key: string; value: string }[] = [];

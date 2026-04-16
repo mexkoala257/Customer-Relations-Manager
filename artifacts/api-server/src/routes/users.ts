@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
 import {
   CreateUserBody,
@@ -21,7 +21,9 @@ router.get("/users", requireAdmin, async (_req, res): Promise<void> => {
     role: usersTable.role,
     weeklyLeadGoal: usersTable.weeklyLeadGoal,
     createdAt: usersTable.createdAt,
-  }).from(usersTable).orderBy(usersTable.createdAt);
+  }).from(usersTable)
+    .where(ne(usersTable.role, "superadmin"))
+    .orderBy(usersTable.createdAt);
   res.json(users);
 });
 

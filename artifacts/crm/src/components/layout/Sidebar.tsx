@@ -97,7 +97,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           );
         })}
 
-        {userRole === "admin" && (
+        {(userRole === "admin" || userRole === "superadmin") && (
           <>
             <div className="pt-3 pb-1 px-3">
               <div className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/40">
