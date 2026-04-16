@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import {
   useListLeads,
   useDeleteLead,
@@ -20,12 +20,18 @@ import {
   Mail,
   Loader2,
   ChevronDown,
+  CalendarDays,
+  List,
+  AlertCircle,
 } from "lucide-react";
 
-import { LEAD_STATUSES, STATUS_BADGE, STATUS_COLORS } from "@/lib/lead-status";
+import { LEAD_STATUSES, STATUS_BADGE } from "@/lib/lead-status";
 
 const STATUS_OPTIONS = ["", ...LEAD_STATUSES];
 
+type ViewMode = "all" | "this-week";
+
+/* ── Inline status selector ────────────────────────────────────────────── */
 function InlineStatusSelect({
   leadId,
   currentStatus,
@@ -56,22 +62,14 @@ function InlineStatusSelect({
     const newStatus = e.target.value as typeof LEAD_STATUSES[number];
     if (newStatus === currentStatus) return;
     setSaving(true);
-    updateMutation.mutate({
-      id: leadId,
-      data: { status: newStatus },
-    });
+    updateMutation.mutate({ id: leadId, data: { status: newStatus } });
   }
 
   const badgeClass = STATUS_BADGE[currentStatus] ?? "bg-gray-100 text-gray-700";
 
   return (
     <div className="relative inline-flex items-center">
-      <span
-        className={cn(
-          "absolute inset-0 rounded-full pointer-events-none",
-          badgeClass
-        )}
-      />
+      <span className={cn("absolute inset-0 rounded-full pointer-events-none", badgeClass)} />
       <select
         value={currentStatus}
         onChange={handleChange}
@@ -84,9 +82,7 @@ function InlineStatusSelect({
         data-testid={`status-select-${leadId}`}
       >
         {LEAD_STATUSES.map((s) => (
-          <option key={s} value={s}>
-            {s}
-          </option>
+          <option key={s} value={s}>{s}</option>
         ))}
       </select>
       {saving ? (
@@ -98,21 +94,121 @@ function InlineStatusSelect({
   );
 }
 
+/* ── Date grouping helpers ──────────────────────────────────────────────── */
+function getWeekDayLabel(dateStr: string): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + "T00:00:00");
+  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+  if (diff < 0) return "Overdue";
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+}
+
+function groupByFollowUpDay(
+  leads: NonNullable<ReturnType<typeof useListLeads>["data"]>
+) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sorted = [...leads].sort((a, b) => {
+    if (!a.followUpDate) return 1;
+    if (!b.followUpDate) return -1;
+    return a.followUpDate.localeCompare(b.followUpDate);
+  });
+
+  const groups: { label: string; overdue: boolean; leads: typeof sorted }[] = [];
+  const seen = new Map<string, number>();
+
+  for (const lead of sorted) {
+    const key = lead.followUpDate ?? "__no-date";
+    const label = lead.followUpDate ? getWeekDayLabel(lead.followUpDate) : "No Date Set";
+    const d = lead.followUpDate ? new Date(lead.followUpDate + "T00:00:00") : null;
+    const overdue = d ? d < today : false;
+
+    if (!seen.has(label)) {
+      seen.set(label, groups.length);
+      groups.push({ label, overdue, leads: [] });
+    }
+    groups[seen.get(label)!].leads.push(lead);
+  }
+  return groups;
+}
+
+/* ── Shared row actions ─────────────────────────────────────────────────── */
+function RowActions({
+  lead,
+  mapsUrl,
+  onFollowup,
+  onDelete,
+}: {
+  lead: { id: string };
+  mapsUrl: string | null;
+  onFollowup: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 justify-end">
+      {mapsUrl && (
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition"
+          title="Navigate"
+          data-testid={`navigate-${lead.id}`}
+        >
+          <MapPin className="w-4 h-4" />
+        </a>
+      )}
+      <button
+        onClick={onFollowup}
+        className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition"
+        title="Send follow-up email"
+        data-testid={`followup-${lead.id}`}
+      >
+        <Mail className="w-4 h-4" />
+      </button>
+      <Link
+        href={`/leads/${lead.id}`}
+        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition"
+        data-testid={`edit-lead-${lead.id}`}
+      >
+        <Edit className="w-4 h-4" />
+      </Link>
+      <button
+        onClick={onDelete}
+        className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition"
+        data-testid={`delete-lead-${lead.id}`}
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+/* ── Main page ──────────────────────────────────────────────────────────── */
 export default function LeadsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState("");
   const { userRole } = useAuth();
 
-  const params = statusFilter ? { status: statusFilter } : {};
-  const { data: leads, isLoading } = useListLeads(params, {
-    query: { queryKey: getListLeadsQueryKey(params) },
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const allParams = statusFilter ? { status: statusFilter } : {};
+  const weekParams = { followUpThisWeek: "true" };
+
+  const params = viewMode === "this-week" ? weekParams : allParams;
+  const { data: leads, isLoading } = useListLeads(params as Parameters<typeof useListLeads>[0], {
+    query: { queryKey: getListLeadsQueryKey(params as Parameters<typeof useListLeads>[0]) },
   });
 
   const deleteMutation = useDeleteLead({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(params) });
+        queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(params as Parameters<typeof useListLeads>[0]) });
         toast({ title: "Lead deleted" });
       },
     },
@@ -120,19 +216,13 @@ export default function LeadsPage() {
 
   const followupMutation = useSendFollowupEmail({
     mutation: {
-      onSuccess: (data) => {
-        toast({ title: data.message ?? "Follow-up triggered" });
-      },
-      onError: () => {
-        toast({ title: "Failed to send follow-up", variant: "destructive" });
-      },
+      onSuccess: (data) => toast({ title: data.message ?? "Follow-up triggered" }),
+      onError: () => toast({ title: "Failed to send follow-up", variant: "destructive" }),
     },
   });
 
   function handleDelete(id: string) {
-    if (confirm("Delete this lead?")) {
-      deleteMutation.mutate({ id });
-    }
+    if (confirm("Delete this lead?")) deleteMutation.mutate({ id });
   }
 
   function buildMapsUrl(lead: NonNullable<typeof leads>[0]) {
@@ -144,16 +234,26 @@ export default function LeadsPage() {
 
   function formatDate(d: string | null | undefined) {
     if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
+      month: "short", day: "numeric", year: "numeric",
     });
   }
 
   function refreshLeads() {
-    queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(params) });
+    queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(params as Parameters<typeof useListLeads>[0]) });
   }
+
+  const weekGroups = viewMode === "this-week" ? groupByFollowUpDay(leads ?? []) : [];
+
+  /* ── Get current week range label ── */
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + daysToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const weekLabel = `${monday.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${sunday.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 
   return (
     <AppLayout>
@@ -165,7 +265,7 @@ export default function LeadsPage() {
               {userRole === "admin" ? "All Leads" : "My Leads"}
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {leads?.length ?? 0} total records
+              {leads?.length ?? 0} {viewMode === "this-week" ? "follow-ups this week" : "total records"}
             </p>
           </div>
           <Link
@@ -178,151 +278,236 @@ export default function LeadsPage() {
           </Link>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          {STATUS_OPTIONS.map((s) => (
-            <button
-              key={s || "all"}
-              onClick={() => setStatusFilter(s)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
-                statusFilter === s
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card border-card-border text-muted-foreground hover:bg-muted"
-              )}
-              data-testid={`filter-${s || "all"}`}
-            >
-              {s || "All Status"}
-            </button>
-          ))}
+        {/* View mode toggle */}
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={() => setViewMode("all")}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
+              viewMode === "all"
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-card border-card-border text-muted-foreground hover:bg-muted"
+            )}
+          >
+            <List className="w-4 h-4" />
+            All Leads
+          </button>
+          <button
+            onClick={() => { setViewMode("this-week"); setStatusFilter(""); }}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
+              viewMode === "this-week"
+                ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                : "bg-card border-card-border text-muted-foreground hover:bg-muted"
+            )}
+            data-testid="filter-this-week"
+          >
+            <CalendarDays className="w-4 h-4" />
+            This Week
+            {viewMode !== "this-week" && (
+              <span className="ml-1 text-xs opacity-70">{weekLabel}</span>
+            )}
+          </button>
+          {viewMode === "this-week" && (
+            <span className="text-sm text-muted-foreground ml-1">{weekLabel}</span>
+          )}
         </div>
 
-        {/* Table */}
+        {/* Status filter pills — only shown in "All" mode */}
+        {viewMode === "all" && (
+          <div className="flex flex-wrap gap-2 mb-5">
+            {STATUS_OPTIONS.map((s) => (
+              <button
+                key={s || "all"}
+                onClick={() => setStatusFilter(s)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
+                  statusFilter === s
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-card-border text-muted-foreground hover:bg-muted"
+                )}
+                data-testid={`filter-${s || "all"}`}
+              >
+                {s || "All Status"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Content */}
         {isLoading ? (
           <div className="flex items-center justify-center h-48">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-        ) : (leads ?? []).length === 0 ? (
-          <div className="text-center py-16 bg-card border border-card-border rounded-xl">
-            <div className="text-muted-foreground text-sm">No leads found.</div>
-            <Link href="/leads/new" className="mt-3 inline-block text-sm text-primary font-medium hover:underline">
-              Create your first lead
-            </Link>
-          </div>
-        ) : (
-          <div className="bg-card border border-card-border rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" data-testid="leads-table">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Company
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Follow-up
-                    </th>
-                    {userRole === "admin" && (
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Rep
-                      </th>
-                    )}
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Notes
-                    </th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {(leads ?? []).map((lead) => {
-                    const mapsUrl = buildMapsUrl(lead);
-                    return (
-                      <tr
-                        key={lead.id}
-                        className="hover:bg-muted/40 transition-colors"
-                        data-testid={`lead-row-${lead.id}`}
-                      >
-                        <td className="px-4 py-3.5">
-                          <Link
-                            href={`/customers/${lead.customerId}`}
-                            className="font-medium text-foreground hover:text-primary transition truncate max-w-[160px] block"
-                          >
-                            {lead.customer?.companyName}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3.5 text-muted-foreground">
-                          {lead.customer?.contactName}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <InlineStatusSelect
-                            leadId={lead.id}
-                            currentStatus={lead.status}
-                            onUpdated={refreshLeads}
-                          />
-                        </td>
-                        <td className="px-4 py-3.5 text-muted-foreground tabular-nums">
-                          {formatDate(lead.followUpDate)}
-                        </td>
-                        {userRole === "admin" && (
-                          <td className="px-4 py-3.5 text-muted-foreground text-xs">
-                            {lead.user?.email?.split("@")[0]}
-                          </td>
-                        )}
-                        <td className="px-4 py-3.5 text-muted-foreground max-w-[200px]">
-                          <span className="truncate block">
-                            {lead.notes || "—"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-1.5 justify-end">
-                            {mapsUrl && (
-                              <a
-                                href={mapsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition"
-                                title="Navigate"
-                                data-testid={`navigate-${lead.id}`}
-                              >
-                                <MapPin className="w-4 h-4" />
-                              </a>
-                            )}
-                            <button
-                              onClick={() => followupMutation.mutate({ id: lead.id })}
-                              className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition"
-                              title="Send follow-up email"
-                              data-testid={`followup-${lead.id}`}
-                            >
-                              <Mail className="w-4 h-4" />
-                            </button>
-                            <Link
-                              href={`/leads/${lead.id}`}
-                              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition"
-                              data-testid={`edit-lead-${lead.id}`}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Link>
-                            <button
-                              onClick={() => handleDelete(lead.id)}
-                              className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition"
-                              data-testid={`delete-lead-${lead.id}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        ) : viewMode === "this-week" ? (
+          /* ── THIS WEEK VIEW ── */
+          weekGroups.length === 0 ? (
+            <div className="text-center py-16 bg-card border border-card-border rounded-xl">
+              <CalendarDays className="w-10 h-10 mx-auto text-muted-foreground/40 mb-3" />
+              <div className="text-muted-foreground text-sm font-medium">No follow-ups scheduled this week</div>
+              <p className="text-xs text-muted-foreground/60 mt-1">Set a follow-up date on any lead to see it here</p>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-6">
+              {weekGroups.map((group) => (
+                <div key={group.label}>
+                  {/* Group header */}
+                  <div className="flex items-center gap-2 mb-2">
+                    {group.overdue ? (
+                      <AlertCircle className="w-4 h-4 text-destructive" />
+                    ) : (
+                      <CalendarDays className="w-4 h-4 text-amber-500" />
+                    )}
+                    <h2 className={cn(
+                      "text-sm font-bold",
+                      group.overdue ? "text-destructive" : group.label === "Today" ? "text-amber-600" : "text-foreground"
+                    )}>
+                      {group.label}
+                    </h2>
+                    <span className="text-xs text-muted-foreground">
+                      {group.leads.length} lead{group.leads.length !== 1 ? "s" : ""}
+                    </span>
+                    <div className="flex-1 h-px bg-border ml-1" />
+                  </div>
+
+                  {/* Leads for this group */}
+                  <div className="bg-card border border-card-border rounded-xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <tbody className="divide-y divide-border">
+                          {group.leads.map((lead) => {
+                            const mapsUrl = buildMapsUrl(lead);
+                            return (
+                              <tr
+                                key={lead.id}
+                                className="hover:bg-muted/40 transition-colors"
+                                data-testid={`lead-row-${lead.id}`}
+                              >
+                                <td className="px-4 py-3.5">
+                                  <Link
+                                    href={`/customers/${lead.customerId}`}
+                                    className="font-medium text-foreground hover:text-primary transition truncate max-w-[160px] block"
+                                  >
+                                    {lead.customer?.companyName}
+                                  </Link>
+                                  <span className="text-xs text-muted-foreground">
+                                    {lead.customer?.contactName}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3.5">
+                                  <InlineStatusSelect
+                                    leadId={lead.id}
+                                    currentStatus={lead.status}
+                                    onUpdated={refreshLeads}
+                                  />
+                                </td>
+                                {userRole === "admin" && (
+                                  <td className="px-4 py-3.5 text-muted-foreground text-xs">
+                                    {lead.user?.email?.split("@")[0]}
+                                  </td>
+                                )}
+                                <td className="px-4 py-3.5 text-muted-foreground max-w-[220px]">
+                                  <span className="truncate block text-xs">{lead.notes || "—"}</span>
+                                </td>
+                                <td className="px-4 py-3.5">
+                                  <RowActions
+                                    lead={lead}
+                                    mapsUrl={mapsUrl}
+                                    onFollowup={() => followupMutation.mutate({ id: lead.id })}
+                                    onDelete={() => handleDelete(lead.id)}
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          /* ── ALL LEADS VIEW ── */
+          (leads ?? []).length === 0 ? (
+            <div className="text-center py-16 bg-card border border-card-border rounded-xl">
+              <div className="text-muted-foreground text-sm">No leads found.</div>
+              <Link href="/leads/new" className="mt-3 inline-block text-sm text-primary font-medium hover:underline">
+                Create your first lead
+              </Link>
+            </div>
+          ) : (
+            <div className="bg-card border border-card-border rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" data-testid="leads-table">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Follow-up</th>
+                      {userRole === "admin" && (
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rep</th>
+                      )}
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notes</th>
+                      <th className="px-4 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {(leads ?? []).map((lead) => {
+                      const mapsUrl = buildMapsUrl(lead);
+                      return (
+                        <tr
+                          key={lead.id}
+                          className="hover:bg-muted/40 transition-colors"
+                          data-testid={`lead-row-${lead.id}`}
+                        >
+                          <td className="px-4 py-3.5">
+                            <Link
+                              href={`/customers/${lead.customerId}`}
+                              className="font-medium text-foreground hover:text-primary transition truncate max-w-[160px] block"
+                            >
+                              {lead.customer?.companyName}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3.5 text-muted-foreground">
+                            {lead.customer?.contactName}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <InlineStatusSelect
+                              leadId={lead.id}
+                              currentStatus={lead.status}
+                              onUpdated={refreshLeads}
+                            />
+                          </td>
+                          <td className="px-4 py-3.5 text-muted-foreground tabular-nums">
+                            {formatDate(lead.followUpDate)}
+                          </td>
+                          {userRole === "admin" && (
+                            <td className="px-4 py-3.5 text-muted-foreground text-xs">
+                              {lead.user?.email?.split("@")[0]}
+                            </td>
+                          )}
+                          <td className="px-4 py-3.5 text-muted-foreground max-w-[200px]">
+                            <span className="truncate block">{lead.notes || "—"}</span>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <RowActions
+                              lead={lead}
+                              mapsUrl={mapsUrl}
+                              onFollowup={() => followupMutation.mutate({ id: lead.id })}
+                              onDelete={() => handleDelete(lead.id)}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
         )}
       </div>
     </AppLayout>

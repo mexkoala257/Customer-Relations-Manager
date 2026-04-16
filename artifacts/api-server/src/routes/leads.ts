@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, leadsTable, customersTable, usersTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { sendFollowUpEmail } from "../lib/mailer";
 import {
@@ -48,7 +48,7 @@ function buildLeadSelect() {
 
 router.get("/leads", requireAuth, async (req, res): Promise<void> => {
   const qp = ListLeadsQueryParams.safeParse(req.query);
-  const { status, userId, followUpToday } = qp.success ? qp.data : {};
+  const { status, userId, followUpToday, followUpThisWeek } = qp.success ? qp.data : {};
 
   const isAdmin = req.user!.role === "admin";
   const conditions = [];
@@ -67,6 +67,25 @@ router.get("/leads", requireAuth, async (req, res): Promise<void> => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
     conditions.push(eq(leadsTable.followUpDate, todayStr));
+  }
+
+  if (followUpThisWeek === "true") {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + daysToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const mondayStr = monday.toISOString().split("T")[0];
+    const sundayStr = sunday.toISOString().split("T")[0];
+    conditions.push(
+      and(
+        sql`${leadsTable.followUpDate} >= ${mondayStr}`,
+        sql`${leadsTable.followUpDate} <= ${sundayStr}`,
+        sql`${leadsTable.followUpDate} IS NOT NULL`
+      )!
+    );
   }
 
   const leads = await db

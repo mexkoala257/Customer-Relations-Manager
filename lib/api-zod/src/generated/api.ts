@@ -254,6 +254,7 @@ export const ListLeadsQueryParams = zod.object({
   status: zod.coerce.string().optional(),
   userId: zod.coerce.string().optional(),
   followUpToday: zod.coerce.string().optional(),
+  followUpThisWeek: zod.coerce.string().optional(),
 });
 
 export const ListLeadsResponseItem = zod.object({

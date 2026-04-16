@@ -10,4 +10,5 @@ export type ListLeadsParams = {
   status?: string;
   userId?: string;
   followUpToday?: string;
+  followUpThisWeek?: string;
 };
