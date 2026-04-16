@@ -51,7 +51,7 @@ router.get("/leads", requireAuth, async (req, res): Promise<void> => {
   const qp = ListLeadsQueryParams.safeParse(req.query);
   const { status, userId, followUpToday, followUpThisWeek } = qp.success ? qp.data : {};
 
-  const isAdmin = req.user!.role === "admin";
+  const isAdmin = req.user!.role === "admin" || req.user!.role === "superadmin";
   const conditions = [eq(leadsTable.isActive, true)];
 
   if (!isAdmin) {
@@ -152,7 +152,7 @@ router.get("/leads/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const isAdmin = req.user!.role === "admin";
+  const isAdmin = req.user!.role === "admin" || req.user!.role === "superadmin";
   if (!isAdmin && lead.userId !== req.user!.userId) {
     res.status(403).json({ error: "Forbidden" });
     return;
@@ -180,7 +180,7 @@ router.patch("/leads/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const isAdmin = req.user!.role === "admin";
+  const isAdmin = req.user!.role === "admin" || req.user!.role === "superadmin";
   if (!isAdmin && existing.userId !== req.user!.userId) {
     res.status(403).json({ error: "Forbidden" });
     return;
@@ -213,7 +213,7 @@ router.delete("/leads/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const isAdmin = req.user!.role === "admin";
+  const isAdmin = req.user!.role === "admin" || req.user!.role === "superadmin";
   if (!isAdmin && existing.userId !== req.user!.userId) {
     res.status(403).json({ error: "Forbidden" });
     return;
