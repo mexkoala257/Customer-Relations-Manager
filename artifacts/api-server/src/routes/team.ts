@@ -11,7 +11,7 @@ function canDelete(userId: string, ownerId: string, role: string) {
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 
-router.get("/team/messages", requireAuth, async (req, res): Promise<void> => {
+router.get("/team/messages", async (_req, res): Promise<void> => {
   const rows = await db
     .select({
       id: teamMessagesTable.id,
@@ -52,7 +52,7 @@ router.delete("/team/messages/:id", requireAuth, async (req, res): Promise<void>
 
 // ── Updates ───────────────────────────────────────────────────────────────────
 
-router.get("/team/updates", requireAuth, async (req, res): Promise<void> => {
+router.get("/team/updates", async (_req, res): Promise<void> => {
   const rows = await db
     .select({
       id: teamUpdatesTable.id,
