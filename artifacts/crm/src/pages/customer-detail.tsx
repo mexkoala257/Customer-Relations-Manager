@@ -164,46 +164,73 @@ export default function CustomerDetailPage({ id }: { id: string }) {
                     )} />
                     <div className="flex items-start gap-3">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className={cn(
-                              "text-xs px-2 py-0.5 rounded-full font-semibold",
-                              inactive
-                                ? "bg-muted text-muted-foreground"
-                                : STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700"
-                            )}
-                          >
-                            {lead.status}
-                          </span>
-                          {inactive && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium tracking-wide uppercase">
-                              Archived
-                            </span>
-                          )}
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {new Date(lead.createdAt).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </span>
-                          {lead.user?.email && (
-                            <span className="text-xs text-muted-foreground">
-                              by {lead.user.email.split("@")[0]}
-                            </span>
-                          )}
-                        </div>
-                        {lead.notes && (
-                          <p className="text-sm mt-1.5 text-foreground/80 leading-relaxed">
-                            {lead.notes}
-                          </p>
-                        )}
-                        {lead.followUpDate && !inactive && (
-                          <div className="text-xs text-accent font-medium mt-1">
-                            Follow-up: {new Date(lead.followUpDate + "T00:00:00").toLocaleDateString()}
-                          </div>
-                        )}
+                        {(() => {
+                          const meta = (lead.metadata ?? {}) as Record<string, string>;
+                          const tempColors: Record<string, string> = {
+                            Hot: "bg-red-100 text-red-700",
+                            Medium: "bg-amber-100 text-amber-700",
+                            Cold: "bg-blue-100 text-blue-700",
+                          };
+                          return (
+                            <>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span
+                                  className={cn(
+                                    "text-xs px-2 py-0.5 rounded-full font-semibold",
+                                    inactive
+                                      ? "bg-muted text-muted-foreground"
+                                      : STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700"
+                                  )}
+                                >
+                                  {lead.status}
+                                </span>
+                                {meta.temperature && (
+                                  <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", tempColors[meta.temperature] ?? "bg-gray-100 text-gray-700")}>
+                                    {meta.temperature === "Hot" ? "🔥" : meta.temperature === "Cold" ? "❄️" : "🌤"} {meta.temperature}
+                                  </span>
+                                )}
+                                {inactive && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium tracking-wide uppercase">
+                                    Archived
+                                  </span>
+                                )}
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {new Date(lead.createdAt).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}
+                                </span>
+                                {lead.user?.email && (
+                                  <span className="text-xs text-muted-foreground">
+                                    by {lead.user.email.split("@")[0]}
+                                  </span>
+                                )}
+                              </div>
+                              {meta.currentSupplier && (
+                                <p className="text-xs mt-1.5 text-muted-foreground">
+                                  <span className="font-semibold">Current Supplier:</span> {meta.currentSupplier}
+                                </p>
+                              )}
+                              {meta.productsDiscussed && (
+                                <p className="text-xs mt-0.5 text-muted-foreground">
+                                  <span className="font-semibold">Products &amp; Pricing:</span> {meta.productsDiscussed}
+                                </p>
+                              )}
+                              {lead.notes && (
+                                <p className="text-sm mt-1.5 text-foreground/80 leading-relaxed">
+                                  {lead.notes}
+                                </p>
+                              )}
+                              {lead.followUpDate && !inactive && (
+                                <div className="text-xs text-accent font-medium mt-1">
+                                  Follow-up: {new Date(lead.followUpDate + "T00:00:00").toLocaleDateString()}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                       {!inactive && (
                         <div className="flex items-center gap-1.5 flex-shrink-0">

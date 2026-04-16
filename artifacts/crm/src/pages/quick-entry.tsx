@@ -43,6 +43,9 @@ export default function QuickEntryPage() {
     status: "New" as typeof STATUS_OPTIONS[number],
     notes: "",
     followUpDate: "",
+    currentSupplier: "",
+    temperature: "" as "" | "Hot" | "Medium" | "Cold",
+    productsDiscussed: "",
   });
 
   const { data: customers } = useListCustomers();
@@ -86,6 +89,11 @@ export default function QuickEntryPage() {
           status: lead.status,
           notes: lead.notes || undefined,
           followUpDate: lead.followUpDate || undefined,
+          metadata: {
+            ...(lead.currentSupplier ? { currentSupplier: lead.currentSupplier } : {}),
+            ...(lead.temperature ? { temperature: lead.temperature } : {}),
+            ...(lead.productsDiscussed ? { productsDiscussed: lead.productsDiscussed } : {}),
+          },
         },
       });
 
@@ -340,6 +348,51 @@ export default function QuickEntryPage() {
                     data-testid="lead-followup-date"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Current Supplier
+                </label>
+                <input
+                  type="text"
+                  value={lead.currentSupplier}
+                  onChange={(e) => setLead((prev) => ({ ...prev, currentSupplier: e.target.value }))}
+                  placeholder="Who are they currently buying from?"
+                  className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="lead-current-supplier"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Temperature
+                </label>
+                <select
+                  value={lead.temperature}
+                  onChange={(e) => setLead((prev) => ({ ...prev, temperature: e.target.value as "" | "Hot" | "Medium" | "Cold" }))}
+                  className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="lead-temperature"
+                >
+                  <option value="">Select temperature...</option>
+                  <option value="Hot">🔥 Hot</option>
+                  <option value="Medium">🌤 Medium</option>
+                  <option value="Cold">❄️ Cold</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Products &amp; Pricing Discussed
+                </label>
+                <textarea
+                  value={lead.productsDiscussed}
+                  onChange={(e) => setLead((prev) => ({ ...prev, productsDiscussed: e.target.value }))}
+                  rows={3}
+                  placeholder="List products and pricing discussed..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  data-testid="lead-products-discussed"
+                />
               </div>
 
               <div className="space-y-1.5">

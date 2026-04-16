@@ -37,6 +37,9 @@ export default function LeadDetailPage({ id }: { id: string }) {
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
   const [repId, setRepId] = useState("");
+  const [currentSupplier, setCurrentSupplier] = useState("");
+  const [temperature, setTemperature] = useState<"" | "Hot" | "Medium" | "Cold">("");
+  const [productsDiscussed, setProductsDiscussed] = useState("");
 
   useEffect(() => {
     if (lead) {
@@ -44,6 +47,10 @@ export default function LeadDetailPage({ id }: { id: string }) {
       setNotes(lead.notes ?? "");
       setFollowUpDate(lead.followUpDate ?? "");
       setRepId(lead.userId ?? "");
+      const meta = (lead.metadata ?? {}) as Record<string, string>;
+      setCurrentSupplier(meta.currentSupplier ?? "");
+      setTemperature((meta.temperature as "" | "Hot" | "Medium" | "Cold") ?? "");
+      setProductsDiscussed(meta.productsDiscussed ?? "");
     }
   }, [lead]);
 
@@ -65,6 +72,11 @@ export default function LeadDetailPage({ id }: { id: string }) {
       status: status as typeof LEAD_STATUSES[number],
       notes,
       followUpDate: followUpDate || null,
+      metadata: {
+        ...(currentSupplier ? { currentSupplier } : {}),
+        ...(temperature ? { temperature } : {}),
+        ...(productsDiscussed ? { productsDiscussed } : {}),
+      },
     };
     if (isAdmin && repId) data.userId = repId;
     updateMutation.mutate({ id, data });
@@ -215,6 +227,45 @@ export default function LeadDetailPage({ id }: { id: string }) {
                 onChange={(e) => setFollowUpDate(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 data-testid="lead-followup-date"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Current Supplier</label>
+              <input
+                type="text"
+                value={currentSupplier}
+                onChange={(e) => setCurrentSupplier(e.target.value)}
+                placeholder="Who are they currently buying from?"
+                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="lead-current-supplier"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Temperature</label>
+              <select
+                value={temperature}
+                onChange={(e) => setTemperature(e.target.value as "" | "Hot" | "Medium" | "Cold")}
+                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="lead-temperature"
+              >
+                <option value="">Not set</option>
+                <option value="Hot">🔥 Hot</option>
+                <option value="Medium">🌤 Medium</option>
+                <option value="Cold">❄️ Cold</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Products &amp; Pricing Discussed</label>
+              <textarea
+                value={productsDiscussed}
+                onChange={(e) => setProductsDiscussed(e.target.value)}
+                rows={3}
+                placeholder="List products and pricing discussed..."
+                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                data-testid="lead-products-discussed"
               />
             </div>
 
