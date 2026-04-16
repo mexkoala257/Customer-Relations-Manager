@@ -9,6 +9,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { PlusCircle, Trash2, Loader2, X, KeyRound, Eye, EyeOff } from "lucide-react";
 
 function GoalInput({ userId, currentGoal }: { userId: string; currentGoal: number | null | undefined }) {
@@ -48,6 +49,81 @@ function GoalInput({ userId, currentGoal }: { userId: string; currentGoal: numbe
         className="w-20 px-2.5 py-1.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring text-center"
         data-testid={`goal-input-${userId}`}
       />
+      {saving && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+    </div>
+  );
+}
+
+const ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: "sales", label: "Sales" },
+  { value: "data-entry", label: "Data Entry" },
+  { value: "admin", label: "Admin" },
+];
+
+function roleBadgeClass(role: string) {
+  if (role === "admin") return "bg-accent/20 text-accent-foreground";
+  if (role === "data-entry") return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+  return "bg-muted text-muted-foreground";
+}
+
+function InlineRoleSelect({
+  userId,
+  currentRole,
+  isSelf,
+}: {
+  userId: string;
+  currentRole: string;
+  isSelf: boolean;
+}) {
+  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const updateMutation = useUpdateUser({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+        setSaving(false);
+      },
+      onError: () => {
+        setSaving(false);
+        toast({ title: "Failed to update role", variant: "destructive" });
+      },
+    },
+  });
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newRole = e.target.value;
+    if (newRole === currentRole) return;
+    setSaving(true);
+    updateMutation.mutate({ id: userId, data: { role: newRole as "admin" | "sales" | "data-entry" } });
+  }
+
+  const label = ROLE_OPTIONS.find((o) => o.value === currentRole)?.label ?? currentRole;
+
+  if (isSelf) {
+    return (
+      <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${roleBadgeClass(currentRole)}`} title="You cannot change your own role">
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <select
+        value={currentRole}
+        onChange={handleChange}
+        disabled={saving}
+        className={`text-xs px-2.5 py-1 rounded-full font-semibold border-0 focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer pr-6 appearance-none ${roleBadgeClass(currentRole)}`}
+        style={{ backgroundImage: "none" }}
+        data-testid={`role-select-${userId}`}
+        title="Change role"
+      >
+        {ROLE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
       {saving && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
     </div>
   );
@@ -186,6 +262,7 @@ function ResetPasswordModal({ userId, userEmail, onClose }: ResetPasswordModalPr
 export default function AdminUsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { userId: currentUserId } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", staffId: "", role: "sales" });
   const [resetTarget, setResetTarget] = useState<{ id: string; email: string } | null>(null);
@@ -366,17 +443,11 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3.5 font-medium">{user.email}</td>
                     <td className="px-4 py-3.5 text-muted-foreground">{user.staffId}</td>
                     <td className="px-4 py-3.5">
-                      <span
-                        className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-                          user.role === "admin"
-                            ? "bg-accent/20 text-accent-foreground"
-                            : user.role === "data-entry"
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {user.role === "data-entry" ? "Data Entry" : user.role}
-                      </span>
+                      <InlineRoleSelect
+                        userId={user.id}
+                        currentRole={user.role}
+                        isSelf={user.id === currentUserId}
+                      />
                     </td>
                     <td className="px-4 py-3.5">
                       <GoalInput userId={user.id} currentGoal={user.weeklyLeadGoal} />
