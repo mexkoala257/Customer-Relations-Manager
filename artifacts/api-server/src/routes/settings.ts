@@ -21,6 +21,7 @@ async function getAllSettings(): Promise<Record<string, string>> {
 
 router.get("/settings", async (_req, res): Promise<void> => {
   const settings = await getAllSettings();
+  res.setHeader("Cache-Control", "no-store");
   res.json({
     companyName: settings.company_name,
     accentColor: settings.accent_color,
