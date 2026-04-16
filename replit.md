@@ -48,6 +48,7 @@ A full-stack Sales CRM with:
 - Admin panel for user management and reminder scheduling (admin-only)
 - **Reports page** (`/admin/reports`, admin-only): print-ready report with "Leads by Sales Rep", "Overdue Activity", and "New Activity (last 7 days)" sections; print/save-as-PDF via `window.print()` with `@media print` CSS
 - Dashboard with stats cards and lead status pie chart
+- **Team Portal** (`/team`, all users): 4-tab collaboration hub — Messages (threaded posts), Quick Updates (Notice/Urgent/Critical badges), Photos (gallery with lightbox), Documents (PDF upload & download); stored in PostgreSQL (`team_messages`, `team_updates`, `team_photos`, `team_documents`); delete restricted to owner or admin; 20mb JSON body limit for base64 uploads
 
 ### Demo Credentials
 - Admin: `admin@crm.com` / `admin123`

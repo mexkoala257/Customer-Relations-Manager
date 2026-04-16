@@ -18,6 +18,7 @@ import AdminUsersPage from "@/pages/admin-users";
 import AdminRemindersPage from "@/pages/admin-reminders";
 import AdminReportsPage from "@/pages/admin-reports";
 import SettingsPage from "@/pages/settings";
+import TeamPage from "@/pages/team";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -111,6 +112,10 @@ function AppRouter() {
 
       <Route path="/settings">
         <ProtectedRoute component={SettingsPage} />
+      </Route>
+
+      <Route path="/team">
+        <ProtectedRoute component={TeamPage} />
       </Route>
 
       <Route component={NotFound} />

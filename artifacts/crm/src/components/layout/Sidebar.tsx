@@ -12,12 +12,14 @@ import {
   Zap,
   Bell,
   FileText,
+  MessageSquare,
 } from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "My Leads", icon: TrendingUp, href: "/leads" },
   { label: "Customers", icon: Building2, href: "/customers" },
+  { label: "Team", icon: MessageSquare, href: "/team" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
 
