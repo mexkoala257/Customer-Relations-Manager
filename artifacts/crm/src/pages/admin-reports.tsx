@@ -6,13 +6,12 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { STATUS_BADGE, LEAD_STATUSES } from "@/lib/lead-status";
+import { STATUS_BADGE } from "@/lib/lead-status";
 import {
   Printer,
   AlertTriangle,
   Sparkles,
   Users,
-  CalendarDays,
   FileText,
 } from "lucide-react";
 
@@ -38,8 +37,7 @@ function isOverdue(followUpDate?: string | null) {
   if (!followUpDate) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const d = new Date(followUpDate + "T00:00:00");
-  return d < today;
+  return new Date(followUpDate + "T00:00:00") < today;
 }
 
 type Lead = {
@@ -64,56 +62,10 @@ type User = {
   role: string;
 };
 
-function LeadRow({ lead, showRep, repName }: { lead: Lead; showRep?: boolean; repName?: string }) {
-  const overdue = isOverdue(lead.followUpDate);
-  return (
-    <tr className="border-b border-gray-100 last:border-0 text-sm">
-      <td className="py-2 pr-4 font-medium text-gray-900">
-        {lead.customer?.companyName ?? "—"}
-      </td>
-      <td className="py-2 pr-4 text-gray-600">{lead.customer?.contactName ?? "—"}</td>
-      {showRep && <td className="py-2 pr-4 text-gray-600">{repName ?? "Unassigned"}</td>}
-      <td className="py-2 pr-4">
-        <span
-          className={cn(
-            "text-xs px-2 py-0.5 rounded-full font-semibold",
-            STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700"
-          )}
-        >
-          {lead.status}
-        </span>
-      </td>
-      <td className={cn("py-2 pr-4 text-xs", overdue ? "text-red-600 font-semibold" : "text-gray-500")}>
-        {lead.followUpDate ? (overdue ? "⚠ " : "") + formatDate(lead.followUpDate) : "—"}
-      </td>
-      <td className="py-2 text-xs text-gray-400 max-w-[200px] truncate">{lead.notes ?? "—"}</td>
-    </tr>
-  );
-}
-
-function SectionHeader({ icon: Icon, title, count, className }: {
-  icon: React.ElementType;
-  title: string;
-  count: number;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex items-center gap-3 mb-4 print:mb-3", className)}>
-      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 print:bg-transparent print:border print:border-gray-300">
-        <Icon className="w-4 h-4 text-gray-600" />
-      </div>
-      <div>
-        <h2 className="text-base font-bold text-gray-900">{title}</h2>
-        <p className="text-xs text-gray-500">{count} lead{count !== 1 ? "s" : ""}</p>
-      </div>
-    </div>
-  );
-}
-
 function EmptyRow({ cols }: { cols: number }) {
   return (
     <tr>
-      <td colSpan={cols} className="py-4 text-center text-sm text-gray-400 italic">
+      <td colSpan={cols} className="py-3 text-center text-sm text-gray-400 italic">
         No leads in this section
       </td>
     </tr>
@@ -131,7 +83,6 @@ export default function AdminReportsPage() {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -156,22 +107,24 @@ export default function AdminReportsPage() {
       unassigned.push(lead);
     }
   });
-  if (unassigned.length > 0) {
-    leadsByRep["__unassigned__"] = unassigned;
-  }
+  if (unassigned.length > 0) leadsByRep["__unassigned__"] = unassigned;
 
   const repIds = [
     ...users.map((u) => u.id).filter((id) => leadsByRep[id]),
     ...(unassigned.length > 0 ? ["__unassigned__"] : []),
   ];
 
+  const isLoading = leadsLoading || usersLoading;
   const handlePrint = () => window.print();
 
-  const isLoading = leadsLoading || usersLoading;
+  const printDate = new Date().toLocaleDateString("en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
 
   return (
-    <AppLayout title="Reports">
-      <div className="max-w-5xl mx-auto px-4 py-6 print:hidden">
+    <AppLayout>
+      {/* ── Screen-only controls ─────────────────────────────────────────── */}
+      <div className="print:hidden max-w-5xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -213,63 +166,109 @@ export default function AdminReportsPage() {
             </div>
           </div>
         )}
+
+        {/* Screen preview of tables */}
+        {!isLoading && (
+          <div className="text-xs text-muted-foreground border border-border/40 rounded-xl px-4 py-3 bg-muted/20">
+            Click <strong>Print / Save as PDF</strong> to generate a compact, report-formatted PDF. The printed version uses 9pt text, dense tables, and removes all UI chrome.
+          </div>
+        )}
       </div>
 
-      {/* ── Printable Report ─────────────────────────────────────────────── */}
+      {/* ── Printable report ─────────────────────────────────────────────── */}
       <div
         ref={reportRef}
         id="printable-report"
-        className="max-w-5xl mx-auto px-4 pb-12 print:px-6 print:py-0 print:max-w-full"
+        className="max-w-5xl mx-auto px-4 pb-12 print:px-0 print:py-0 print:max-w-full"
       >
-        {/* Print-only header */}
-        <div className="hidden print:block mb-6 border-b-2 border-gray-800 pb-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Sales CRM — Lead Report</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Generated by {userEmail}</p>
-            </div>
-            <div className="text-right">
-              <div className="text-sm font-semibold text-gray-700">
-                {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-              </div>
-              <div className="text-xs text-gray-400 mt-0.5">
-                {leads.length} active leads · {users.length} sales reps
-              </div>
-            </div>
-          </div>
-        </div>
-
         {isLoading ? null : (
           <>
-            {/* ── By Sales Rep ─────────────────────────────────────────── */}
-            <div className="mb-10 print:mb-8 print:break-before-avoid">
-              <SectionHeader icon={Users} title="Leads by Sales Rep" count={leads.length} />
-              {repIds.map((repId, repIdx) => {
+            {/* Print header — hidden on screen */}
+            <div className="hidden print:block print-report-header">
+              <div>
+                <h1>Sales CRM — Lead Report</h1>
+                <div className="sub">Prepared by {userEmail}</div>
+              </div>
+              <div className="meta">
+                <div>{printDate}</div>
+                <div style={{ marginTop: "2pt" }}>
+                  {leads.length} active leads &middot; {users.length} reps &middot; {overdue.length} overdue
+                </div>
+              </div>
+            </div>
+
+            {/* Print summary bar — hidden on screen */}
+            <div className="hidden print:flex print-summary">
+              <div className="print-summary-item">
+                <span className="num">{leads.length}</span>
+                <span className="label">Total Active Leads</span>
+              </div>
+              <div className="print-summary-item" style={{ marginLeft: "auto" }}>
+                <span className="num" style={{ color: "#c00" }}>{overdue.length}</span>
+                <span className="label">Overdue</span>
+              </div>
+              <div className="print-summary-item">
+                <span className="num" style={{ color: "#166534" }}>{newActivity.length}</span>
+                <span className="label">New / Recent</span>
+              </div>
+              <div className="print-summary-item">
+                <span className="num">{users.length}</span>
+                <span className="label">Sales Reps</span>
+              </div>
+            </div>
+
+            {/* ── SECTION 1: By Sales Rep ───────────────────────────────── */}
+            <div className="mb-10 print:mb-0">
+              {/* Screen header */}
+              <div className="print:hidden flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                  <Users className="w-4 h-4 text-gray-600" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">Leads by Sales Rep</h2>
+                  <p className="text-xs text-gray-500">{leads.length} lead{leads.length !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+
+              {/* Print header */}
+              <div className="hidden print:block print-section-title">
+                Leads by Sales Representative
+              </div>
+
+              {repIds.map((repId) => {
                 const rep = repId === "__unassigned__" ? null : repMap[repId];
                 const repLeads = leadsByRep[repId] ?? [];
+                const repName = rep ? (rep.name || rep.email) : "Unassigned";
                 return (
-                  <div
-                    key={repId}
-                    className={cn(
-                      "mb-6 print:mb-6",
-                      repIdx > 0 && "print:break-inside-avoid"
-                    )}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
+                  <div key={repId} className="mb-6 print:mb-0 print:break-inside-avoid">
+                    {/* Screen rep header */}
+                    <div className="print:hidden flex items-center gap-2 mb-2">
                       <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
                         <span className="text-[10px] font-bold text-accent">
                           {rep ? rep.email.charAt(0).toUpperCase() : "?"}
                         </span>
                       </div>
-                      <span className="text-sm font-semibold text-gray-800 print:text-gray-900">
-                        {rep ? (rep.name || rep.email) : "Unassigned"}
-                      </span>
+                      <span className="text-sm font-semibold text-gray-800">{repName}</span>
                       <span className="text-xs text-gray-400">· {repLeads.length} lead{repLeads.length !== 1 ? "s" : ""}</span>
                     </div>
-                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden print:rounded-none print:border-gray-300">
+
+                    {/* Print rep header */}
+                    <div className="hidden print:block print-rep-header">
+                      {repName}
+                      <span className="print-rep-count">{repLeads.length} lead{repLeads.length !== 1 ? "s" : ""}</span>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden print:rounded-none print:border-none print:overflow-visible">
                       <table className="w-full text-left">
+                        <colgroup>
+                          <col style={{ width: "22%" }} />
+                          <col style={{ width: "17%" }} />
+                          <col style={{ width: "12%" }} />
+                          <col style={{ width: "12%" }} />
+                          <col style={{ width: "37%" }} />
+                        </colgroup>
                         <thead>
-                          <tr className="bg-gray-50 print:bg-gray-100 text-xs text-gray-500 uppercase tracking-wide">
+                          <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
                             <th className="py-2 px-3">Company</th>
                             <th className="py-2 px-3">Contact</th>
                             <th className="py-2 px-3">Status</th>
@@ -280,21 +279,24 @@ export default function AdminReportsPage() {
                         <tbody className="divide-y divide-gray-100">
                           {repLeads.length === 0
                             ? <EmptyRow cols={5} />
-                            : repLeads.map((lead) => (
-                              <tr key={lead.id} className="text-sm">
-                                <td className="py-2 px-3 font-medium text-gray-900">{lead.customer?.companyName ?? "—"}</td>
-                                <td className="py-2 px-3 text-gray-600">{lead.customer?.contactName ?? "—"}</td>
-                                <td className="py-2 px-3">
-                                  <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700")}>
-                                    {lead.status}
-                                  </span>
-                                </td>
-                                <td className={cn("py-2 px-3 text-xs", isOverdue(lead.followUpDate) ? "text-red-600 font-semibold" : "text-gray-500")}>
-                                  {lead.followUpDate ? (isOverdue(lead.followUpDate) ? "⚠ " : "") + formatDate(lead.followUpDate) : "—"}
-                                </td>
-                                <td className="py-2 px-3 text-xs text-gray-400 max-w-[200px] truncate">{lead.notes ?? "—"}</td>
-                              </tr>
-                            ))
+                            : repLeads.map((lead) => {
+                              const over = isOverdue(lead.followUpDate);
+                              return (
+                                <tr key={lead.id} className="text-sm">
+                                  <td className="py-2 px-3 font-medium text-gray-900">{lead.customer?.companyName ?? "—"}</td>
+                                  <td className="py-2 px-3 text-gray-600">{lead.customer?.contactName ?? "—"}</td>
+                                  <td className="py-2 px-3">
+                                    <span className={cn("print-badge text-xs px-2 py-0.5 rounded-full font-semibold", STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700")}>
+                                      {lead.status}
+                                    </span>
+                                  </td>
+                                  <td className={cn("py-2 px-3 text-xs", over ? "overdue-cell text-red-600 font-semibold" : "text-gray-500")}>
+                                    {lead.followUpDate ? (over ? "⚠ " : "") + formatDate(lead.followUpDate) : "—"}
+                                  </td>
+                                  <td className="notes-cell py-2 px-3 text-xs text-gray-500">{lead.notes || "—"}</td>
+                                </tr>
+                              );
+                            })
                           }
                         </tbody>
                       </table>
@@ -304,18 +306,36 @@ export default function AdminReportsPage() {
               })}
             </div>
 
-            {/* ── Overdue Activity ─────────────────────────────────────── */}
-            <div className="mb-10 print:mb-8 print:break-before-page">
-              <SectionHeader
-                icon={AlertTriangle}
-                title="Overdue Activity"
-                count={overdue.length}
-                className="text-red-600 [&>div:first-child]:bg-red-50 [&>div:first-child]:print:border-red-200"
-              />
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden print:rounded-none print:border-gray-300">
+            {/* ── SECTION 2: Overdue Activity ───────────────────────────── */}
+            <div className="mb-10 print:break-before-page">
+              {/* Screen header */}
+              <div className="print:hidden flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-red-500" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">Overdue Activity</h2>
+                  <p className="text-xs text-gray-500">{overdue.length} lead{overdue.length !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+
+              {/* Print header */}
+              <div className="hidden print:block print-section-title" style={{ color: "#900" }}>
+                Overdue Follow-ups — Action Required
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden print:rounded-none print:border-none">
                 <table className="w-full text-left">
+                  <colgroup>
+                    <col style={{ width: "20%" }} />
+                    <col style={{ width: "15%" }} />
+                    <col style={{ width: "15%" }} />
+                    <col style={{ width: "11%" }} />
+                    <col style={{ width: "11%" }} />
+                    <col style={{ width: "28%" }} />
+                  </colgroup>
                   <thead>
-                    <tr className="bg-red-50 print:bg-red-50 text-xs text-gray-500 uppercase tracking-wide">
+                    <tr className="bg-red-50 text-xs text-gray-500 uppercase tracking-wide">
                       <th className="py-2 px-3">Company</th>
                       <th className="py-2 px-3">Contact</th>
                       <th className="py-2 px-3">Rep</th>
@@ -333,19 +353,19 @@ export default function AdminReportsPage() {
                           ? Math.floor((today.getTime() - new Date(lead.followUpDate + "T00:00:00").getTime()) / 86400000)
                           : null;
                         return (
-                          <tr key={lead.id} className="text-sm bg-red-50/30 print:bg-transparent">
+                          <tr key={lead.id} className="text-sm">
                             <td className="py-2 px-3 font-medium text-gray-900">{lead.customer?.companyName ?? "—"}</td>
                             <td className="py-2 px-3 text-gray-600">{lead.customer?.contactName ?? "—"}</td>
                             <td className="py-2 px-3 text-gray-600">{rep ? (rep.name || rep.email.split("@")[0]) : "Unassigned"}</td>
                             <td className="py-2 px-3">
-                              <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700")}>
+                              <span className={cn("print-badge text-xs px-2 py-0.5 rounded-full font-semibold", STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700")}>
                                 {lead.status}
                               </span>
                             </td>
-                            <td className="py-2 px-3 text-xs text-red-600 font-semibold">
-                              {formatDate(lead.followUpDate)}{days !== null ? ` (${days}d ago)` : ""}
+                            <td className="overdue-cell py-2 px-3 text-xs text-red-600 font-semibold">
+                              {formatDate(lead.followUpDate)}{days !== null ? ` (${days}d)` : ""}
                             </td>
-                            <td className="py-2 px-3 text-xs text-gray-400 max-w-[200px] truncate">{lead.notes ?? "—"}</td>
+                            <td className="notes-cell py-2 px-3 text-xs text-gray-400">{lead.notes || "—"}</td>
                           </tr>
                         );
                       })
@@ -355,24 +375,42 @@ export default function AdminReportsPage() {
               </div>
             </div>
 
-            {/* ── New Activity ─────────────────────────────────────────── */}
-            <div className="mb-10 print:mb-8 print:break-inside-avoid">
-              <SectionHeader
-                icon={Sparkles}
-                title="New Activity (last 7 days + New status)"
-                count={newActivity.length}
-                className="[&>div:first-child]:bg-emerald-50 [&>div:first-child]:print:border-emerald-200"
-              />
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden print:rounded-none print:border-gray-300">
+            {/* ── SECTION 3: New Activity ───────────────────────────────── */}
+            <div className="mb-10 print:mb-0 print:break-inside-avoid">
+              {/* Screen header */}
+              <div className="print:hidden flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">New Activity</h2>
+                  <p className="text-xs text-gray-500">Last 7 days or status = New · {newActivity.length} lead{newActivity.length !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+
+              {/* Print header */}
+              <div className="hidden print:block print-section-title" style={{ color: "#145214" }}>
+                New Activity — Last 7 Days &amp; New Status
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden print:rounded-none print:border-none">
                 <table className="w-full text-left">
+                  <colgroup>
+                    <col style={{ width: "20%" }} />
+                    <col style={{ width: "15%" }} />
+                    <col style={{ width: "15%" }} />
+                    <col style={{ width: "11%" }} />
+                    <col style={{ width: "11%" }} />
+                    <col style={{ width: "28%" }} />
+                  </colgroup>
                   <thead>
-                    <tr className="bg-emerald-50 print:bg-emerald-50 text-xs text-gray-500 uppercase tracking-wide">
+                    <tr className="bg-emerald-50 text-xs text-gray-500 uppercase tracking-wide">
                       <th className="py-2 px-3">Company</th>
                       <th className="py-2 px-3">Contact</th>
                       <th className="py-2 px-3">Rep</th>
                       <th className="py-2 px-3">Status</th>
                       <th className="py-2 px-3">Created</th>
-                      <th className="py-2 px-3">Follow-up</th>
+                      <th className="py-2 px-3">Notes</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -386,14 +424,12 @@ export default function AdminReportsPage() {
                             <td className="py-2 px-3 text-gray-600">{lead.customer?.contactName ?? "—"}</td>
                             <td className="py-2 px-3 text-gray-600">{rep ? (rep.name || rep.email.split("@")[0]) : "Unassigned"}</td>
                             <td className="py-2 px-3">
-                              <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700")}>
+                              <span className={cn("print-badge text-xs px-2 py-0.5 rounded-full font-semibold", STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700")}>
                                 {lead.status}
                               </span>
                             </td>
                             <td className="py-2 px-3 text-xs text-gray-500">{formatDateTime(lead.createdAt)}</td>
-                            <td className={cn("py-2 px-3 text-xs", isOverdue(lead.followUpDate) ? "text-red-600 font-semibold" : "text-gray-500")}>
-                              {lead.followUpDate ? (isOverdue(lead.followUpDate) ? "⚠ " : "") + formatDate(lead.followUpDate) : "—"}
-                            </td>
+                            <td className="notes-cell py-2 px-3 text-xs text-gray-400">{lead.notes || "—"}</td>
                           </tr>
                         );
                       })
@@ -404,9 +440,9 @@ export default function AdminReportsPage() {
             </div>
 
             {/* Print footer */}
-            <div className="hidden print:block mt-8 pt-4 border-t border-gray-200 text-xs text-gray-400 flex justify-between">
-              <span>SalesCRM · Confidential</span>
-              <span>Printed {new Date().toLocaleString()}</span>
+            <div className="hidden print:flex print-footer">
+              <span>SalesCRM &middot; Confidential</span>
+              <span>Generated {new Date().toLocaleString()}</span>
             </div>
           </>
         )}
