@@ -52,7 +52,7 @@ function ProtectedRoute({ component: Component, adminOnly = false, ...props }: {
     return <Redirect to="/login" />;
   }
 
-  if (adminOnly && userRole !== "admin") {
+  if (adminOnly && userRole !== "admin" && userRole !== "superadmin") {
     return <Redirect to="/" />;
   }
 

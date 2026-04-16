@@ -148,7 +148,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold tracking-tight" data-testid="dashboard-title">
-              {userRole === "admin" ? "Overview" : "My Dashboard"}
+              {(userRole === "admin" || userRole === "superadmin") ? "Overview" : "My Dashboard"}
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               Welcome back, {userEmail?.split("@")[0]}

@@ -21,7 +21,7 @@ export default function LeadDetailPage({ id }: { id: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { userRole } = useAuth();
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "admin" || userRole === "superadmin";
 
   const { data: lead, isLoading } = useGetLead(id, {
     query: { queryKey: getGetLeadQueryKey(id), enabled: !!id },

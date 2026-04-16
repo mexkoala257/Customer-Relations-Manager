@@ -17,7 +17,7 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
   useEffect(() => {
     if (!isLoading && (error || !user)) {
       setLocation("/login");
-    } else if (!isLoading && user && adminOnly && user.role !== "admin") {
+    } else if (!isLoading && user && adminOnly && user.role !== "admin" && user.role !== "superadmin") {
       toast({ title: "Access Denied", description: "Admin access required.", variant: "destructive" });
       setLocation("/");
     }
@@ -27,7 +27,7 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
     return <div className="flex h-screen w-full items-center justify-center"><Spinner className="w-8 h-8" /></div>;
   }
 
-  if (!user || (adminOnly && user.role !== "admin")) {
+  if (!user || (adminOnly && user.role !== "admin" && user.role !== "superadmin")) {
     return null;
   }
 

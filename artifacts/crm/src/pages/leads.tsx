@@ -262,7 +262,7 @@ export default function LeadsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { userRole } = useAuth();
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "admin" || userRole === "superadmin";
 
   const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [statusFilter, setStatusFilter] = useState("");

@@ -553,7 +553,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 export default function TeamPage() {
   const { userEmail, userRole, userId } = useAuth();
   const [tab, setTab] = useState<Tab>("messages");
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "admin" || userRole === "superadmin";
   const uid = userId ?? "";
 
   return (
