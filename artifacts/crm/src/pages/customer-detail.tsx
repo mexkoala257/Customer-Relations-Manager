@@ -1,18 +1,22 @@
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import {
   useGetCustomer,
+  useUpdateCustomer,
   useSendFollowupEmail,
   getGetCustomerQueryKey,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock } from "lucide-react";
+import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X } from "lucide-react";
 
 import { STATUS_BADGE } from "@/lib/lead-status";
 
 export default function CustomerDetailPage({ id }: { id: string }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: customer, isLoading } = useGetCustomer(id, {
     query: { queryKey: getGetCustomerQueryKey(id), enabled: !!id },
@@ -28,6 +32,79 @@ export default function CustomerDetailPage({ id }: { id: string }) {
       },
     },
   });
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    companyName: "",
+    contactName: "",
+    phone: "",
+    streetAddress: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    contactRole: "",
+  });
+
+  useEffect(() => {
+    if (customer) {
+      setEditForm({
+        companyName: customer.companyName,
+        contactName: customer.contactName,
+        phone: customer.phone ?? "",
+        streetAddress: customer.streetAddress ?? "",
+        city: customer.city ?? "",
+        state: customer.state ?? "",
+        zipCode: customer.zipCode ?? "",
+        contactRole: (customer as any).contactRole ?? "",
+      });
+    }
+  }, [customer]);
+
+  const updateMutation = useUpdateCustomer({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetCustomerQueryKey(id) });
+        toast({ title: "Customer updated successfully" });
+        setIsEditing(false);
+      },
+      onError: () => {
+        toast({ title: "Failed to update customer", variant: "destructive" });
+      },
+    },
+  });
+
+  function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    updateMutation.mutate({
+      id,
+      data: {
+        companyName: editForm.companyName,
+        contactName: editForm.contactName,
+        phone: editForm.phone || undefined,
+        streetAddress: editForm.streetAddress || undefined,
+        city: editForm.city || undefined,
+        state: editForm.state || undefined,
+        zipCode: editForm.zipCode || undefined,
+        contactRole: editForm.contactRole || undefined,
+      },
+    });
+  }
+
+  function handleCancel() {
+    if (customer) {
+      setEditForm({
+        companyName: customer.companyName,
+        contactName: customer.contactName,
+        phone: customer.phone ?? "",
+        streetAddress: customer.streetAddress ?? "",
+        city: customer.city ?? "",
+        state: customer.state ?? "",
+        zipCode: customer.zipCode ?? "",
+        contactRole: (customer as any).contactRole ?? "",
+      });
+    }
+    setIsEditing(false);
+  }
 
   function buildMapsUrl() {
     if (!customer?.streetAddress || !customer?.city) return null;
@@ -71,7 +148,7 @@ export default function CustomerDetailPage({ id }: { id: string }) {
             </h1>
             <p className="text-sm text-muted-foreground">{customer.contactName}</p>
           </div>
-          {mapsUrl && (
+          {mapsUrl && !isEditing && (
             <a
               href={mapsUrl}
               target="_blank"
@@ -87,51 +164,194 @@ export default function CustomerDetailPage({ id }: { id: string }) {
 
         {/* Customer Info Card */}
         <div className="bg-card border border-card-border rounded-xl p-5 mb-6">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-            Contact Information
-          </h2>
-          {(customer as any).contactRole && (
-            <div className="mb-3">
-              <span className="inline-block text-xs px-2.5 py-1 rounded-full font-semibold bg-accent/15 text-accent border border-accent/20">
-                {(customer as any).contactRole}
-              </span>
-            </div>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            {customer.phone && (
-              <div className="flex items-start gap-2.5">
-                <Phone className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div>
-                  <div className="text-xs text-muted-foreground">Phone</div>
-                  <div className="font-medium">{customer.phone}</div>
-                </div>
-              </div>
-            )}
-            {(customer.city || customer.state) && (
-              <div className="flex items-start gap-2.5">
-                <Building2 className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div>
-                  <div className="text-xs text-muted-foreground">Location</div>
-                  <div className="font-medium">
-                    {[customer.city, customer.state].filter(Boolean).join(", ")}
-                  </div>
-                </div>
-              </div>
-            )}
-            {customer.streetAddress && (
-              <div className="flex items-start gap-2.5 sm:col-span-2">
-                <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div>
-                  <div className="text-xs text-muted-foreground">Address</div>
-                  <div className="font-medium">
-                    {[customer.streetAddress, customer.city, customer.state, customer.zipCode]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </div>
-                </div>
-              </div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Contact Information
+            </h2>
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-lg hover:bg-muted transition"
+                data-testid="edit-customer-button"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            ) : (
+              <button
+                onClick={handleCancel}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-lg hover:bg-muted transition"
+                data-testid="cancel-edit-customer"
+              >
+                <X className="w-3.5 h-3.5" />
+                Cancel
+              </button>
             )}
           </div>
+
+          {isEditing ? (
+            <form onSubmit={handleSave} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Company Name <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.companyName}
+                    onChange={(e) => setEditForm((p) => ({ ...p, companyName: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="edit-companyName"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Contact Name <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.contactName}
+                    onChange={(e) => setEditForm((p) => ({ ...p, contactName: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="edit-contactName"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phone</label>
+                  <input
+                    type="text"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))}
+                    placeholder="555-000-1234"
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="edit-phone"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact Role</label>
+                  <select
+                    value={editForm.contactRole}
+                    onChange={(e) => setEditForm((p) => ({ ...p, contactRole: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="edit-contactRole"
+                  >
+                    <option value="">Select role...</option>
+                    <option value="Owner">Owner</option>
+                    <option value="Decision Maker">Decision Maker</option>
+                    <option value="Non Decision Maker">Non Decision Maker</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Street Address</label>
+                  <input
+                    type="text"
+                    value={editForm.streetAddress}
+                    onChange={(e) => setEditForm((p) => ({ ...p, streetAddress: e.target.value }))}
+                    placeholder="123 Main St"
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="edit-streetAddress"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">City</label>
+                  <input
+                    type="text"
+                    value={editForm.city}
+                    onChange={(e) => setEditForm((p) => ({ ...p, city: e.target.value }))}
+                    placeholder="Austin"
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="edit-city"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">State</label>
+                  <input
+                    type="text"
+                    value={editForm.state}
+                    onChange={(e) => setEditForm((p) => ({ ...p, state: e.target.value }))}
+                    placeholder="TX"
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="edit-state"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">ZIP Code</label>
+                  <input
+                    type="text"
+                    value={editForm.zipCode}
+                    onChange={(e) => setEditForm((p) => ({ ...p, zipCode: e.target.value }))}
+                    placeholder="78701"
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="edit-zipCode"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={updateMutation.isPending}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
+                data-testid="save-customer-button"
+              >
+                {updateMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Save Changes
+              </button>
+            </form>
+          ) : (
+            <>
+              {(customer as any).contactRole && (
+                <div className="mb-3">
+                  <span className="inline-block text-xs px-2.5 py-1 rounded-full font-semibold bg-accent/15 text-accent border border-accent/20">
+                    {(customer as any).contactRole}
+                  </span>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                {customer.phone && (
+                  <div className="flex items-start gap-2.5">
+                    <Phone className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Phone</div>
+                      <div className="font-medium">{customer.phone}</div>
+                    </div>
+                  </div>
+                )}
+                {(customer.city || customer.state) && (
+                  <div className="flex items-start gap-2.5">
+                    <Building2 className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Location</div>
+                      <div className="font-medium">
+                        {[customer.city, customer.state].filter(Boolean).join(", ")}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {customer.streetAddress && (
+                  <div className="flex items-start gap-2.5 sm:col-span-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Address</div>
+                      <div className="font-medium">
+                        {[customer.streetAddress, customer.city, customer.state, customer.zipCode]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {!customer.phone && !customer.city && !customer.state && !customer.streetAddress && (
+                  <p className="text-sm text-muted-foreground sm:col-span-2">No contact details on file.</p>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Interaction History */}
@@ -154,7 +374,7 @@ export default function CustomerDetailPage({ id }: { id: string }) {
             </div>
           ) : (
             <div className="space-y-4">
-              {leads.map((lead: any, idx: number) => {
+              {leads.map((lead: any) => {
                 const inactive = lead.isActive === false;
                 return (
                   <div
