@@ -188,6 +188,31 @@ git pull
 
 ---
 
+## Security
+
+### Login Rate Limiting
+
+The login endpoint enforces a limit of **10 attempts per IP per 15 minutes**. After the limit is reached the API returns `429 Too Many Requests` with a human-readable message. The counter resets automatically after the window expires. No configuration is required — this is active by default.
+
+### Superadmin Password Recovery
+
+If the superadmin password is ever forgotten, reset it directly on the server over SSH — no web access required:
+
+```bash
+# From the project root directory on the server
+pnpm --filter @workspace/scripts run reset-superadmin
+```
+
+The script will:
+1. Find the superadmin account in the database
+2. Display the account email so you can confirm it's the right account
+3. Prompt for a new password (min. 8 characters) and confirmation
+4. Hash and save it — no server restart needed
+
+This script has no web-facing endpoint and cannot be triggered remotely. SSH access to the server is the only way to run it.
+
+---
+
 ## Environment Variables
 
 | Variable | Required | Description |
