@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   useListLeads,
   useDeleteLead,
+  useUpdateLead,
   useSendFollowupEmail,
   getListLeadsQueryKey,
 } from "@workspace/api-client-react";
@@ -17,14 +18,85 @@ import {
   Trash2,
   Edit,
   Mail,
-  Search,
-  Filter,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 
-import { LEAD_STATUSES, STATUS_BADGE } from "@/lib/lead-status";
+import { LEAD_STATUSES, STATUS_BADGE, STATUS_COLORS } from "@/lib/lead-status";
 
 const STATUS_OPTIONS = ["", ...LEAD_STATUSES];
+
+function InlineStatusSelect({
+  leadId,
+  currentStatus,
+  onUpdated,
+}: {
+  leadId: string;
+  currentStatus: string;
+  onUpdated: () => void;
+}) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+
+  const updateMutation = useUpdateLead({
+    mutation: {
+      onSuccess: () => {
+        setSaving(false);
+        onUpdated();
+        toast({ title: "Status updated" });
+      },
+      onError: () => {
+        setSaving(false);
+        toast({ title: "Failed to update status", variant: "destructive" });
+      },
+    },
+  });
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newStatus = e.target.value as typeof LEAD_STATUSES[number];
+    if (newStatus === currentStatus) return;
+    setSaving(true);
+    updateMutation.mutate({
+      id: leadId,
+      data: { status: newStatus },
+    });
+  }
+
+  const badgeClass = STATUS_BADGE[currentStatus] ?? "bg-gray-100 text-gray-700";
+
+  return (
+    <div className="relative inline-flex items-center">
+      <span
+        className={cn(
+          "absolute inset-0 rounded-full pointer-events-none",
+          badgeClass
+        )}
+      />
+      <select
+        value={currentStatus}
+        onChange={handleChange}
+        disabled={saving}
+        className={cn(
+          "relative appearance-none text-xs font-semibold rounded-full pl-2.5 pr-6 py-1 bg-transparent border-0 outline-none cursor-pointer transition-opacity",
+          badgeClass,
+          saving && "opacity-50"
+        )}
+        data-testid={`status-select-${leadId}`}
+      >
+        {LEAD_STATUSES.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+      {saving ? (
+        <Loader2 className="absolute right-1.5 w-3 h-3 animate-spin pointer-events-none" />
+      ) : (
+        <ChevronDown className="absolute right-1.5 w-3 h-3 pointer-events-none opacity-60" />
+      )}
+    </div>
+  );
+}
 
 export default function LeadsPage() {
   const { toast } = useToast();
@@ -77,6 +149,10 @@ export default function LeadsPage() {
       day: "numeric",
       year: "numeric",
     });
+  }
+
+  function refreshLeads() {
+    queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(params) });
   }
 
   return (
@@ -183,14 +259,11 @@ export default function LeadsPage() {
                           {lead.customer?.contactName}
                         </td>
                         <td className="px-4 py-3.5">
-                          <span
-                            className={cn(
-                              "text-xs px-2.5 py-1 rounded-full font-semibold",
-                              STATUS_BADGE[lead.status] ?? "bg-gray-100 text-gray-700"
-                            )}
-                          >
-                            {lead.status}
-                          </span>
+                          <InlineStatusSelect
+                            leadId={lead.id}
+                            currentStatus={lead.status}
+                            onUpdated={refreshLeads}
+                          />
                         </td>
                         <td className="px-4 py-3.5 text-muted-foreground tabular-nums">
                           {formatDate(lead.followUpDate)}
