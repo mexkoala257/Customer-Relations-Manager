@@ -3,12 +3,14 @@ import { useLocation } from "wouter";
 import { useLogin } from "@workspace/api-client-react";
 import { setToken } from "@/lib/api";
 import { TrendingUp, Loader2 } from "lucide-react";
+import { useAppSettings } from "@/contexts/app-settings";
 
 export default function LoginPage() {
   const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const { settings } = useAppSettings();
 
   const loginMutation = useLogin({
     mutation: {
@@ -36,7 +38,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent mb-4">
             <TrendingUp className="w-7 h-7 text-accent-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-white">SalesCRM</h1>
+          <h1 className="text-2xl font-bold text-white">{settings.companyName}</h1>
           <p className="text-sm text-white/50 mt-1">Sign in to your account</p>
         </div>
 

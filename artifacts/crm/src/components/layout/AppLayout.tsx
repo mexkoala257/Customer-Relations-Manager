@@ -1,9 +1,11 @@
 import { useState, ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { Menu, X } from "lucide-react";
+import { useAppSettings } from "@/contexts/app-settings";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { settings } = useAppSettings();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -39,7 +41,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="font-bold text-sm">SalesCRM</div>
+          <div className="font-bold text-sm">{settings.companyName}</div>
           <div className="w-9" />
         </div>
 

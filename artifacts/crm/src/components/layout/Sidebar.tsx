@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useAppSettings } from "@/contexts/app-settings";
 import {
   LayoutDashboard,
   Users,
@@ -32,6 +33,7 @@ const adminItems = [
 export function Sidebar({ onClose }: { onClose?: () => void }) {
   const [location] = useLocation();
   const { userEmail, userRole, staffId, logout } = useAuth();
+  const { settings } = useAppSettings();
 
   function isActive(href: string) {
     if (href === "/") return location === "/";
@@ -47,7 +49,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             <TrendingUp className="w-4 h-4 text-accent-foreground" />
           </div>
           <div>
-            <div className="font-bold text-sm text-white tracking-wide">SalesCRM</div>
+            <div className="font-bold text-sm text-white tracking-wide">{settings.companyName}</div>
             <div className="text-xs text-sidebar-foreground/50">
               {userRole === "admin" ? "Administrator" : "Sales Portal"}
             </div>

@@ -4,6 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { getToken } from "@/lib/api";
+import { AppSettingsProvider } from "@/contexts/app-settings";
+import { BrandingEditor } from "@/components/branding-editor";
 
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
@@ -127,12 +129,15 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <AuthProvider>
-            <AppRouter />
-          </AuthProvider>
-        </WouterRouter>
-        <Toaster />
+        <AppSettingsProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <AuthProvider>
+              <AppRouter />
+              <BrandingEditor />
+            </AuthProvider>
+          </WouterRouter>
+          <Toaster />
+        </AppSettingsProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
