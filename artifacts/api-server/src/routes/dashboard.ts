@@ -6,7 +6,7 @@ import { requireAuth } from "../lib/auth";
 const router = Router();
 
 router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> => {
-  const isAdmin = req.user!.role === "admin";
+  const isAdmin = req.user!.role === "admin" || req.user!.role === "superadmin";
   const userId = req.user!.userId;
 
   const today = new Date().toISOString().split("T")[0];
@@ -58,6 +58,18 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
         : and(eq(leadsTable.userId, userId), gte(leadsTable.createdAt, monday))
     );
 
+  const [overdueLeadsRow] = await db
+    .select({ count: count() })
+    .from(leadsTable)
+    .where(
+      and(
+        eq(leadsTable.isActive, true),
+        sql`${leadsTable.followUpDate} IS NOT NULL`,
+        sql`${leadsTable.followUpDate} < ${today}`,
+        ...(isAdmin ? [] : [eq(leadsTable.userId, userId)])
+      )
+    );
+
   // Fetch the current user's weekly goal
   const [userRow] = await db
     .select({ weeklyLeadGoal: usersTable.weeklyLeadGoal })
@@ -73,6 +85,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     newLeads: Number(newLeadsRow?.count ?? 0),
     leadsThisWeek: Number(leadsThisWeekRow?.count ?? 0),
     weeklyLeadGoal: userRow?.weeklyLeadGoal ?? null,
+    overdueLeads: Number(overdueLeadsRow?.count ?? 0),
   });
 });
 

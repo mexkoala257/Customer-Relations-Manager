@@ -17,6 +17,7 @@ import {
   MapPin,
   ArrowRight,
   Target,
+  AlertTriangle,
 } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -27,30 +28,40 @@ function StatCard({
   value,
   icon: Icon,
   accent,
+  danger,
 }: {
   label: string;
   value: number | undefined;
   icon: React.ElementType;
   accent?: boolean;
+  danger?: boolean;
 }) {
   return (
     <div
       className={cn(
         "rounded-xl p-5 border",
-        accent
+        danger
+          ? "bg-destructive/10 border-destructive/30 dark:bg-destructive/20"
+          : accent
           ? "bg-accent text-accent-foreground border-accent"
           : "bg-card border-card-border"
       )}
     >
       <div className="flex items-center justify-between mb-3">
-        <span className={cn("text-xs font-semibold uppercase tracking-wider", accent ? "text-accent-foreground/70" : "text-muted-foreground")}>
+        <span className={cn(
+          "text-xs font-semibold uppercase tracking-wider",
+          danger ? "text-destructive" : accent ? "text-accent-foreground/70" : "text-muted-foreground"
+        )}>
           {label}
         </span>
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", accent ? "bg-accent-foreground/10" : "bg-muted")}>
-          <Icon className="w-4 h-4" />
+        <div className={cn(
+          "w-8 h-8 rounded-lg flex items-center justify-center",
+          danger ? "bg-destructive/15" : accent ? "bg-accent-foreground/10" : "bg-muted"
+        )}>
+          <Icon className={cn("w-4 h-4", danger && "text-destructive")} />
         </div>
       </div>
-      <div className="text-3xl font-bold tracking-tight">
+      <div className={cn("text-3xl font-bold tracking-tight", danger && "text-destructive")}>
         {value ?? "—"}
       </div>
     </div>
@@ -171,6 +182,12 @@ export default function DashboardPage() {
           <StatCard label="Total Customers" value={summary?.totalCustomers} icon={Building2} />
           <StatCard label="Active Leads" value={summary?.totalLeads} icon={Users} />
           <StatCard label="Close Win" value={summary?.wonLeads} icon={CheckCircle} />
+          <StatCard
+            label="Overdue Follow-ups"
+            value={summary?.overdueLeads}
+            icon={AlertTriangle}
+            danger={!!summary?.overdueLeads && summary.overdueLeads > 0}
+          />
           <WeeklyGoalCard
             leadsThisWeek={summary?.leadsThisWeek}
             weeklyLeadGoal={summary?.weeklyLeadGoal}
