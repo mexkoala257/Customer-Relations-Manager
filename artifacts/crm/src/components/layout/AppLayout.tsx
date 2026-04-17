@@ -47,6 +47,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
         <main className="flex-1 overflow-y-auto">
           {children}
+          <div className="px-6 py-3 text-center text-[11px] text-muted-foreground/50 select-none print:hidden">
+            Developed and Implemented by: DoodleWorks LLC
+          </div>
         </main>
       </div>
     </div>

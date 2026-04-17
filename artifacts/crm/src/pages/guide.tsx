@@ -911,6 +911,9 @@ export default function GuidePage() {
               Print or Save as PDF
             </button>
           </div>
+          <div className="mt-4 text-[11px] text-muted-foreground/50">
+            Developed and Implemented by: DoodleWorks LLC
+          </div>
         </div>
 
       </div>
