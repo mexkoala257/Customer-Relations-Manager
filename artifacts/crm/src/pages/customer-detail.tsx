@@ -14,7 +14,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X, StickyNote, Trash2, PlusCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X, StickyNote, Trash2, PlusCircle, UserRound } from "lucide-react";
 import { LEAD_STATUSES } from "@/lib/lead-status";
 
 interface AccountNote {
@@ -249,6 +249,9 @@ export default function CustomerDetailPage({ id }: { id: string }) {
   const mapsUrl = buildMapsUrl();
   const leads = (customer as any).leads ?? [];
 
+  const activeLeads = leads.filter((l: any) => l.isActive);
+  const assignedRep = activeLeads[0]?.user ?? null;
+
   return (
     <AppLayout>
       <div className="p-6 max-w-3xl mx-auto">
@@ -471,7 +474,23 @@ export default function CustomerDetailPage({ id }: { id: string }) {
                     </div>
                   </div>
                 )}
-                {!customer.phone && !customer.city && !customer.state && !customer.streetAddress && (
+                {assignedRep && (
+                  <div className="flex items-start gap-2.5" data-testid="assigned-rep">
+                    <UserRound className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Assigned Salesman</div>
+                      <div className="font-medium">
+                        {assignedRep.email?.split("@")[0] ?? "—"}
+                        {assignedRep.staffId && (
+                          <span className="ml-1.5 text-xs text-muted-foreground font-normal">
+                            #{assignedRep.staffId}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {!customer.phone && !customer.city && !customer.state && !customer.streetAddress && !assignedRep && (
                   <p className="text-sm text-muted-foreground sm:col-span-2">No contact details on file.</p>
                 )}
               </div>
