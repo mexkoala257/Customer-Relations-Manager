@@ -35,7 +35,7 @@ app.use("/api", router);
 
 if (process.env["NODE_ENV"] === "production") {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const frontendDist = path.resolve(__dirname, "../../crm/dist");
+  const frontendDist = path.resolve(__dirname, "../../crm/dist/public");
   app.use(express.static(frontendDist));
   app.get("/{*path}", (_req, res) => {
     res.sendFile(path.join(frontendDist, "index.html"));
