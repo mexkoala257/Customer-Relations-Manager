@@ -1,0 +1,68 @@
+root@srv1227103:/opt/salescrm# pm2 logs --lines 20
+
+[TAILING] Tailing last 20 lines for [all] processes (change the value with --lines option)
+/root/.pm2/pm2.log last 20 lines:
+PM2        | 2026-04-17T20:01:37: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:37: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:37: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:38: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:38: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:38: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:40: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:40: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:40: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:41: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:41: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:41: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:42: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:42: PM2 log: Script /usr/bin/pnpm had too many unstable restarts (16). Stopped. "errored"
+
+/root/.pm2/logs/salescrm-error.log last 20 lines:
+0|salescrm | Node.js v22.22.2
+0|salescrm | /opt/salescrm/node_modules/.pnpm/path-to-regexp@8.3.0/node_modules/path-to-regexp/src/index.ts:225
+0|salescrm |       throw new PathError(`Missing parameter name at index ${index}`, str);
+0|salescrm |             ^
+0|salescrm | 
+0|salescrm | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+0|salescrm |     at name (/opt/salescrm/node_modules/.pnpm/path-to-regexp@8.3.0/node_modules/path-to-regexp/src/index.ts:225:13)
+0|salescrm |     at parse (/opt/salescrm/node_modules/.pnpm/path-to-regexp@8.3.0/node_modules/path-to-regexp/src/index.ts:242:62)
+0|salescrm |     at pathToRegexp (/opt/salescrm/node_modules/.pnpm/path-to-regexp@8.3.0/node_modules/path-to-regexp/src/index.ts:480:54)
+0|salescrm |     at Object.match (/opt/salescrm/node_modules/.pnpm/path-to-regexp@8.3.0/node_modules/path-to-regexp/src/index.ts:438:28)
+0|salescrm |     at matcher (/opt/salescrm/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+0|salescrm |     at new Layer (/opt/salescrm/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+0|salescrm |     at Function.route (/opt/salescrm/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+0|salescrm |     at Function.route (/opt/salescrm/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+0|salescrm |     at Function.app2.<computed> (/opt/salescrm/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22)
+0|salescrm |     at <anonymous> (/opt/salescrm/artifacts/api-server/src/app.ts:40:7) {
+0|salescrm |   originalPath: '*'
+0|salescrm | }
+0|salescrm | 
+0|salescrm | Node.js v22.22.2
+
+/root/.pm2/logs/salescrm-out.log last 20 lines:
+0|salescrm | > @workspace/api-server@0.0.0 start /opt/salescrm/artifacts/api-server
+0|salescrm | > node --enable-source-maps ./dist/index.mjs
+0|salescrm | 
+0|salescrm | /opt/salescrm/artifacts/api-server:
+0|salescrm |  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 start: `node --enable-source-maps ./dist/index.mjs`
+0|salescrm | Exit status 1
+0|salescrm | 
+0|salescrm | > @workspace/api-server@0.0.0 start /opt/salescrm/artifacts/api-server
+0|salescrm | > node --enable-source-maps ./dist/index.mjs
+0|salescrm | 
+0|salescrm | /opt/salescrm/artifacts/api-server:
+0|salescrm |  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 start: `node --enable-source-maps ./dist/index.mjs`
+0|salescrm | Exit status 1
+0|salescrm | 
+0|salescrm | > @workspace/api-server@0.0.0 start /opt/salescrm/artifacts/api-server
+0|salescrm | > node --enable-source-maps ./dist/index.mjs
+0|salescrm | 
+0|salescrm | /opt/salescrm/artifacts/api-server:
+0|salescrm |  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 start: `node --enable-source-maps ./dist/index.mjs`
+0|salescrm | Exit status 1
