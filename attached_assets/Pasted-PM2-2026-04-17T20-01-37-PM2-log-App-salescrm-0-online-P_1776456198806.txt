@@ -1,0 +1,100 @@
+PM2        | 2026-04-17T20:01:37: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:38: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:38: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:38: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:39: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:40: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:40: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:40: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:41: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:41: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:01:41: PM2 log: App [salescrm:0] online
+PM2        | 2026-04-17T20:01:42: PM2 log: App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2        | 2026-04-17T20:01:42: PM2 log: Script /usr/bin/pnpm had too many unstable restarts (16). Stopped. "errored"
+PM2        | 2026-04-17T20:02:43: PM2 log: App [salescrm:0] starting in -fork mode-
+PM2        | 2026-04-17T20:02:43: PM2 log: App [salescrm:0] online
+
+/root/.pm2/logs/salescrm-error.log last 20 lines:
+0|salescrm | Node.js v22.22.2
+0|salescrm | /opt/salescrm/node_modules/.pnpm/path-to-regexp@8.3.0/node_modules/path-to-regexp/src/index.ts:225
+0|salescrm |       throw new PathError(`Missing parameter name at index ${index}`, str);
+0|salescrm |             ^
+0|salescrm | 
+0|salescrm | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+0|salescrm |     at name (/opt/salescrm/node_modules/.pnpm/path-to-regexp@8.3.0/node_modules/path-to-regexp/src/index.ts:225:13)
+0|salescrm |     at parse (/opt/salescrm/node_modules/.pnpm/path-to-regexp@8.3.0/node_modules/path-to-regexp/src/index.ts:242:62)
+0|salescrm |     at pathToRegexp (/opt/salescrm/node_modules/.pnpm/path-to-regexp@8.3.0/node_modules/path-to-regexp/src/index.ts:480:54)
+0|salescrm |     at Object.match (/opt/salescrm/node_modules/.pnpm/path-to-regexp@8.3.0/node_modules/path-to-regexp/src/index.ts:438:28)
+0|salescrm |     at matcher (/opt/salescrm/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+0|salescrm |     at new Layer (/opt/salescrm/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+0|salescrm |     at Function.route (/opt/salescrm/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+0|salescrm |     at Function.route (/opt/salescrm/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+0|salescrm |     at Function.app2.<computed> (/opt/salescrm/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22)
+0|salescrm |     at <anonymous> (/opt/salescrm/artifacts/api-server/src/app.ts:40:7) {
+0|salescrm |   originalPath: '*'
+0|salescrm | }
+0|salescrm | 
+0|salescrm | Node.js v22.22.2
+
+/root/.pm2/logs/salescrm-out.log last 20 lines:
+0|salescrm | > @workspace/api-server@0.0.0 start /opt/salescrm/artifacts/api-server
+0|salescrm | > node --enable-source-maps ./dist/index.mjs
+0|salescrm | 
+0|salescrm | /opt/salescrm/artifacts/api-server:
+0|salescrm |  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 start: `node --enable-source-maps ./dist/index.mjs`
+0|salescrm | Exit status 1
+0|salescrm | 
+0|salescrm | > @workspace/api-server@0.0.0 start /opt/salescrm/artifacts/api-server
+0|salescrm | > node --enable-source-maps ./dist/index.mjs
+0|salescrm | 
+0|salescrm | /opt/salescrm/artifacts/api-server:
+0|salescrm |  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 start: `node --enable-source-maps ./dist/index.mjs`
+0|salescrm | Exit status 1
+0|salescrm | 
+0|salescrm | > @workspace/api-server@0.0.0 start /opt/salescrm/artifacts/api-server
+0|salescrm | > node --enable-source-maps ./dist/index.mjs
+0|salescrm | 
+0|salescrm | /opt/salescrm/artifacts/api-server:
+0|salescrm |  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 start: `node --enable-source-maps ./dist/index.mjs`
+0|salescrm | Exit status 1
+
+0|salescrm  | > @workspace/api-server@0.0.0 start /opt/salescrm/artifacts/api-server
+0|salescrm  | > node --enable-source-maps ./dist/index.mjs
+0|salescrm  | {"level":30,"time":1776456164097,"pid":7476,"hostname":"srv1227103","port":8080,"msg":"Server listening"}
+0|salescrm  | {"level":30,"time":1776456164098,"pid":7476,"hostname":"srv1227103","msg":"Starting reminder scheduler"}
+0|salescrm  | {"level":30,"time":1776456164537,"pid":7476,"hostname":"srv1227103","req":{"id":1,"method":"GET","url":"/widget/messages"},"res":{"statusCode":404},"responseTime":5,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456164544,"pid":7476,"hostname":"srv1227103","req":{"id":2,"method":"GET","url":"/widget/updates"},"res":{"statusCode":404},"responseTime":1,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456167779,"pid":7476,"hostname":"srv1227103","req":{"id":3,"method":"GET","url":"/widget/updates"},"res":{"statusCode":404},"responseTime":2,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456167779,"pid":7476,"hostname":"srv1227103","req":{"id":4,"method":"GET","url":"/widget/messages"},"res":{"statusCode":404},"responseTime":2,"msg":"request completed"}
+0|salescrm  | {"level":30,"time":1776456171961,"pid":7476,"hostname":"srv1227103","req":{"id":5,"method":"GET","url":"/widget/updates"},"res":{"statusCode":404},"responseTime":2,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456171986,"pid":7476,"hostname":"srv1227103","req":{"id":6,"method":"GET","url":"/widget/messages"},"res":{"statusCode":404},"responseTime":1,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456172104,"pid":7476,"hostname":"srv1227103","req":{"id":7,"method":"GET","url":"/widget/updates"},"res":{"statusCode":404},"responseTime":1,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456172924,"pid":7476,"hostname":"srv1227103","req":{"id":8,"method":"GET","url":"/widget/messages"},"res":{"statusCode":404},"responseTime":1,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456172965,"pid":7476,"hostname":"srv1227103","req":{"id":9,"method":"GET","url":"/"},"res":{"statusCode":404},"responseTime":2,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456173516,"pid":7476,"hostname":"srv1227103","req":{"id":10,"method":"GET","url":"/widget/updates"},"res":{"statusCode":404},"responseTime":1,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456174797,"pid":7476,"hostname":"srv1227103","req":{"id":11,"method":"GET","url":"/widget/messages"},"res":{"statusCode":404},"responseTime":1,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456179552,"pid":7476,"hostname":"srv1227103","req":{"id":12,"method":"GET","url":"/widget/updates"},"res":{"statusCode":404},"responseTime":1,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456179562,"pid":7476,"hostname":"srv1227103","req":{"id":13,"method":"GET","url":"/widget/messages"},"res":{"statusCode":404},"responseTime":1,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+0|salescrm  | {"level":30,"time":1776456182808,"pid":7476,"hostname":"srv1227103","req":{"id":14,"method":"GET","url":"/widget/updates"},"res":{"statusCode":404},"responseTime":2,"msg":"request completed"}
+0|salescrm  | {"level":30,"time":1776456182808,"pid":7476,"hostname":"srv1227103","req":{"id":15,"method":"GET","url":"/widget/messages"},"res":{"statusCode":404},"responseTime":1,"msg":"request completed"}
+0|salescrm  | Error: ENOENT: no such file or directory, stat '/opt/salescrm/artifacts/crm/dist/index.html'
+^C
