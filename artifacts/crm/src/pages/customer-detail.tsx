@@ -5,6 +5,7 @@ import {
   useUpdateCustomer,
   useSendFollowupEmail,
   useCreateLead,
+  useListUsers,
   getGetCustomerQueryKey,
   getListLeadsQueryKey,
   customFetch,
@@ -120,6 +121,26 @@ export default function CustomerDetailPage({ id }: { id: string }) {
     if (!trimmed) return;
     addNoteMutation.mutate(trimmed);
   }
+
+  const { data: allUsers } = useListUsers({ query: { enabled: isAdmin } });
+  const salesReps = (allUsers ?? []).filter(
+    (u) => u.role === "sales" || u.role === "admin" || u.role === "superadmin"
+  );
+
+  const assignRepMutation = useMutation({
+    mutationFn: (newUserId: string) =>
+      customFetch(`/api/customers/${id}/assign-rep`, {
+        method: "PATCH",
+        body: JSON.stringify({ userId: newUserId }),
+        headers: { "Content-Type": "application/json" },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getGetCustomerQueryKey(id) });
+      queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() });
+      toast({ title: "Salesman updated" });
+    },
+    onError: () => toast({ title: "Failed to update salesman", variant: "destructive" }),
+  });
 
   function formatNoteDate(iso: string) {
     const d = new Date(iso);
@@ -474,19 +495,47 @@ export default function CustomerDetailPage({ id }: { id: string }) {
                     </div>
                   </div>
                 )}
-                {assignedRep && (
+                {(assignedRep || isAdmin) && (
                   <div className="flex items-start gap-2.5" data-testid="assigned-rep">
                     <UserRound className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">Assigned Salesman</div>
-                      <div className="font-medium">
-                        {assignedRep.email?.split("@")[0] ?? "—"}
-                        {assignedRep.staffId && (
-                          <span className="ml-1.5 text-xs text-muted-foreground font-normal">
-                            #{assignedRep.staffId}
-                          </span>
-                        )}
-                      </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-muted-foreground mb-0.5">Assigned Salesman</div>
+                      {isAdmin ? (
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={assignedRep?.id ?? ""}
+                            onChange={(e) => {
+                              if (e.target.value) assignRepMutation.mutate(e.target.value);
+                            }}
+                            disabled={assignRepMutation.isPending || activeLeads.length === 0}
+                            className="px-2.5 py-1 rounded-lg border border-input bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 cursor-pointer"
+                            data-testid="assign-rep-select"
+                          >
+                            {!assignedRep && <option value="">No rep assigned</option>}
+                            {salesReps.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.email?.split("@")[0]}
+                                {u.staffId ? ` (#${u.staffId})` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          {assignRepMutation.isPending && (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                          )}
+                          {activeLeads.length === 0 && (
+                            <span className="text-xs text-muted-foreground">No active leads to reassign</span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="font-medium">
+                          {assignedRep?.email?.split("@")[0] ?? "—"}
+                          {assignedRep?.staffId && (
+                            <span className="ml-1.5 text-xs text-muted-foreground font-normal">
+                              #{assignedRep.staffId}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

@@ -139,6 +139,36 @@ router.delete("/customers/:id", requireAuth, async (req, res): Promise<void> => 
   res.sendStatus(204);
 });
 
+/* ── Assign rep ──────────────────────────────────────────────────────────── */
+
+router.patch("/customers/:id/assign-rep", requireAuth, async (req, res): Promise<void> => {
+  const role = req.user!.role;
+  if (role !== "admin" && role !== "superadmin") {
+    res.status(403).json({ error: "Admins only" });
+    return;
+  }
+
+  const { id } = req.params;
+  if (!isUuid(id)) {
+    res.status(400).json({ error: "Invalid customer ID" });
+    return;
+  }
+
+  const newUserId: unknown = req.body?.userId;
+  if (typeof newUserId !== "string" || !isUuid(newUserId)) {
+    res.status(400).json({ error: "Invalid userId" });
+    return;
+  }
+
+  const updated = await db
+    .update(leadsTable)
+    .set({ userId: newUserId })
+    .where(and(eq(leadsTable.customerId, id), eq(leadsTable.isActive, true)))
+    .returning({ id: leadsTable.id });
+
+  res.json({ updatedLeads: updated.length });
+});
+
 /* ── Account Notes ──────────────────────────────────────────────────────── */
 
 router.get("/customers/:id/notes", requireAuth, async (req, res): Promise<void> => {
