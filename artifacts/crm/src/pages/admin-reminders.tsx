@@ -18,6 +18,7 @@ interface ReminderSettings {
   followUpReminderEnabled: boolean;
   followUpDaysBefore: number[];
   summaryEnabled: boolean;
+  pastDueReminderEnabled: boolean;
   lastFollowUpRun: string | null;
   lastSummaryRun: string | null;
   updatedAt: string;
@@ -86,6 +87,7 @@ export default function AdminRemindersPage() {
   const queryClient = useQueryClient();
   const [followUpLogs, setFollowUpLogs] = useState<string[] | null>(null);
   const [summaryLogs, setSummaryLogs] = useState<string[] | null>(null);
+  const [pastDueLogs, setPastDueLogs] = useState<string[] | null>(null);
 
   const { data: settings, isLoading } = useQuery<ReminderSettings>({
     queryKey: ["admin-reminders"],
@@ -125,6 +127,20 @@ export default function AdminRemindersPage() {
       toast({ title: `Follow-up reminders sent (${data.emailsSent} emails)` });
     },
     onError: () => toast({ title: "Failed to send follow-up reminders", variant: "destructive" }),
+  });
+
+  const sendPastDueMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${API}/send-pastdue`, { method: "POST", headers: authHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      return res.json() as Promise<SendResult>;
+    },
+    onSuccess: (data) => {
+      setPastDueLogs(data.logs);
+      queryClient.invalidateQueries({ queryKey: ["admin-reminders"] });
+      toast({ title: `Past-due alerts sent (${data.emailsSent} emails)` });
+    },
+    onError: () => toast({ title: "Failed to send past-due alerts", variant: "destructive" }),
   });
 
   const sendSummaryMutation = useMutation({
@@ -241,6 +257,45 @@ export default function AdminRemindersPage() {
           </div>
         </div>
 
+        {/* Daily Past-Due Reminders */}
+        <div className="bg-card border border-card-border rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-card-border flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Bell className="w-4 h-4 text-destructive" />
+              <div>
+                <div className="font-semibold text-sm">Daily Past-Due Alerts</div>
+                <div className="text-xs text-muted-foreground">Email reps each morning about overdue follow-ups on their active leads</div>
+              </div>
+            </div>
+            <Toggle
+              checked={settings.pastDueReminderEnabled}
+              onChange={(v) => updateMutation.mutate({ pastDueReminderEnabled: v })}
+              disabled={isSaving}
+            />
+          </div>
+
+          <div className={cn("p-5 space-y-4 transition-opacity", !settings.pastDueReminderEnabled && "opacity-40 pointer-events-none")}>
+            <div className="text-xs text-muted-foreground bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3 leading-relaxed">
+              <strong className="text-red-700 dark:text-red-400">How it works:</strong> Each morning at 8:00 AM, every sales rep receives an email listing all of their active leads where the follow-up date has already passed and hasn't been updated. Reps with no overdue leads receive nothing.
+            </div>
+
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => { setPastDueLogs(null); sendPastDueMutation.mutate(); }}
+                disabled={sendPastDueMutation.isPending}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-destructive text-destructive-foreground rounded-lg text-xs font-medium hover:opacity-90 transition disabled:opacity-60"
+                data-testid="send-pastdue-now"
+              >
+                {sendPastDueMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                Send Now
+              </button>
+            </div>
+
+            {pastDueLogs && <LogPanel logs={pastDueLogs} onClose={() => setPastDueLogs(null)} />}
+          </div>
+        </div>
+
         {/* Weekly Summary Emails */}
         <div className="bg-card border border-card-border rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-card-border flex items-center justify-between">
@@ -301,6 +356,7 @@ export default function AdminRemindersPage() {
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Automatic Schedule</div>
           <div className="space-y-1.5 text-xs text-muted-foreground">
             <div className="flex gap-2"><span className="font-mono bg-background rounded px-1.5 py-0.5 border border-border">8:00 AM daily</span><span>Follow-up reminders checked and sent</span></div>
+            <div className="flex gap-2"><span className="font-mono bg-background rounded px-1.5 py-0.5 border border-border">8:00 AM daily</span><span>Past-due follow-up alerts dispatched to reps</span></div>
             <div className="flex gap-2"><span className="font-mono bg-background rounded px-1.5 py-0.5 border border-border">8:00 AM Mon & Fri</span><span>Weekly summary emails dispatched</span></div>
           </div>
         </div>

@@ -104,6 +104,59 @@ export async function sendFollowUpReminderEmail(opts: {
   return deliver(opts.toEmail, subject, html, text);
 }
 
+export async function sendPastDueReminderEmail(opts: {
+  toEmail: string;
+  repName: string;
+  leads: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; notes: string | null }>;
+}): Promise<{ sent: boolean; message: string }> {
+  const subject = `SalesCRM — ${opts.leads.length} overdue follow-up${opts.leads.length === 1 ? "" : "s"} need your attention`;
+
+  const rows = opts.leads.map((l) => {
+    const daysAgo = Math.round((Date.now() - new Date(l.followUpDate).getTime()) / 86400000);
+    const overdue = daysAgo === 1 ? "1 day ago" : `${daysAgo} days ago`;
+    return `<tr style="border-bottom:1px solid #e5e7eb">
+      <td style="padding:10px 12px;font-weight:600">${l.companyName}</td>
+      <td style="padding:10px 12px">${l.contactName}</td>
+      <td style="padding:10px 12px">${l.followUpDate}</td>
+      <td style="padding:10px 12px;color:#dc2626;font-weight:600">${overdue}</td>
+      <td style="padding:10px 12px"><span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:12px">${l.status}</span></td>
+    </tr>`;
+  }).join("");
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:640px;margin:0 auto;color:#1f2937">
+      <div style="background:#0f172a;padding:20px 24px;border-radius:8px 8px 0 0">
+        <h2 style="color:#f59e0b;margin:0;font-size:18px">⚡ SalesCRM</h2>
+        <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">Daily Past-Due Alert</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e5e7eb;padding:24px">
+        <p style="margin:0 0 8px">Hi <strong>${opts.repName}</strong>,</p>
+        <p style="margin:0 0 16px;color:#dc2626;font-weight:600">You have ${opts.leads.length} overdue follow-up${opts.leads.length === 1 ? "" : "s"} that require immediate attention:</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          <thead>
+            <tr style="background:#fef2f2;text-align:left">
+              <th style="padding:10px 12px;font-weight:600;color:#6b7280">Company</th>
+              <th style="padding:10px 12px;font-weight:600;color:#6b7280">Contact</th>
+              <th style="padding:10px 12px;font-weight:600;color:#6b7280">Was Due</th>
+              <th style="padding:10px 12px;font-weight:600;color:#dc2626">Overdue By</th>
+              <th style="padding:10px 12px;font-weight:600;color:#6b7280">Status</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-top:0;padding:12px 24px;border-radius:0 0 8px 8px">
+        <p style="margin:0;font-size:12px;color:#9ca3af">Automated daily past-due alert from SalesCRM. Log in to update your leads.</p>
+      </div>
+    </div>`;
+
+  const text = `Hi ${opts.repName},\n\nYou have ${opts.leads.length} overdue follow-up(s):\n\n` +
+    opts.leads.map((l) => `• ${l.companyName} (${l.contactName}) — was due ${l.followUpDate} [${l.status}]`).join("\n") +
+    `\n\nPlease log in to SalesCRM to update these leads.`;
+
+  return deliver(opts.toEmail, subject, html, text);
+}
+
 export async function sendSummaryEmail(opts: {
   toEmail: string;
   recipientName: string;

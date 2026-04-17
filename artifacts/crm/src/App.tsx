@@ -22,6 +22,7 @@ import AdminUsersPage from "@/pages/admin-users";
 import AdminRemindersPage from "@/pages/admin-reminders";
 import AdminReportsPage from "@/pages/admin-reports";
 import SettingsPage from "@/pages/settings";
+import MyRemindersPage from "@/pages/my-reminders";
 import TeamPage from "@/pages/team";
 import NotFound from "@/pages/not-found";
 
@@ -150,6 +151,10 @@ function AppRouter() {
 
         <Route path="/settings">
           <ProtectedRoute component={SettingsPage} />
+        </Route>
+
+        <Route path="/reminders">
+          <ProtectedRoute component={MyRemindersPage} />
         </Route>
 
         <Route path="/team">

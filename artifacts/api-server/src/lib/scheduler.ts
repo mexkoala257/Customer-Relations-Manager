@@ -1,11 +1,16 @@
 import cron from "node-cron";
-import { db, reminderSettingsTable, leadsTable, usersTable, customersTable } from "@workspace/db";
-import { eq, and, gte, lte } from "drizzle-orm";
-import { sendFollowUpReminderEmail, sendSummaryEmail } from "./mailer";
+import { db, reminderSettingsTable, leadsTable, usersTable, customersTable, userReminderPrefsTable } from "@workspace/db";
+import { eq, and, gte, lte, lt } from "drizzle-orm";
+import { sendFollowUpReminderEmail, sendSummaryEmail, sendPastDueReminderEmail } from "./mailer";
 import { logger } from "./logger";
 
 async function getSettings() {
   const rows = await db.select().from(reminderSettingsTable).where(eq(reminderSettingsTable.id, 1)).limit(1);
+  return rows[0] ?? null;
+}
+
+async function getUserPrefs(userId: string) {
+  const rows = await db.select().from(userReminderPrefsTable).where(eq(userReminderPrefsTable.userId, userId)).limit(1);
   return rows[0] ?? null;
 }
 
@@ -30,8 +35,8 @@ export async function runFollowUpReminders(): Promise<{ emailsSent: number; logs
     return { emailsSent: 0, logs };
   }
 
-  const daysBefore = (settings.followUpDaysBefore as number[]) ?? [1, 3];
-  const maxDays = Math.max(...daysBefore);
+  const globalDaysBefore = (settings.followUpDaysBefore as number[]) ?? [1, 3];
+  const maxDays = Math.max(...globalDaysBefore);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -59,6 +64,7 @@ export async function runFollowUpReminders(): Promise<{ emailsSent: number; logs
     .innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
     .where(
       and(
+        eq(leadsTable.isActive, true),
         gte(leadsTable.followUpDate, todayStr),
         lte(leadsTable.followUpDate, cutoffStr)
       )
@@ -75,7 +81,12 @@ export async function runFollowUpReminders(): Promise<{ emailsSent: number; logs
     const key = lead.userId;
     if (!byRep.has(key)) byRep.set(key, { email: lead.repEmail, leads: [] });
     const days = Math.round((new Date(lead.followUpDate!).getTime() - today.getTime()) / 86400000);
-    if (daysBefore.some((d) => d === days)) {
+
+    const userPrefs = await getUserPrefs(lead.userId);
+    const daysBefore = userPrefs?.followUpDaysBefore ?? globalDaysBefore;
+    const reminderEnabled = userPrefs?.followUpReminderEnabled ?? true;
+
+    if (reminderEnabled && (daysBefore as number[]).some((d) => d === days)) {
       byRep.get(key)!.leads.push(lead);
     }
   }
@@ -100,6 +111,78 @@ export async function runFollowUpReminders(): Promise<{ emailsSent: number; logs
   }
 
   await markFollowUpRun();
+  return { emailsSent, logs };
+}
+
+export async function runPastDueReminders(): Promise<{ emailsSent: number; logs: string[] }> {
+  const logs: string[] = [];
+  const settings = await getSettings();
+
+  if (!settings) {
+    logs.push("No reminder settings found — skipping");
+    return { emailsSent: 0, logs };
+  }
+  if (!settings.pastDueReminderEnabled) {
+    logs.push("Past-due reminders are disabled — skipping");
+    return { emailsSent: 0, logs };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
+
+  logs.push(`Checking for overdue leads (follow-up date before ${todayStr})`);
+
+  const overdueLeads = await db
+    .select({
+      leadId: leadsTable.id,
+      followUpDate: leadsTable.followUpDate,
+      status: leadsTable.status,
+      notes: leadsTable.notes,
+      userId: leadsTable.userId,
+      repEmail: usersTable.email,
+      companyName: customersTable.companyName,
+      contactName: customersTable.contactName,
+    })
+    .from(leadsTable)
+    .innerJoin(usersTable, eq(leadsTable.userId, usersTable.id))
+    .innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
+    .where(
+      and(
+        eq(leadsTable.isActive, true),
+        lt(leadsTable.followUpDate, todayStr)
+      )
+    );
+
+  if (!overdueLeads.length) {
+    logs.push("No overdue leads found — skipping");
+    return { emailsSent: 0, logs };
+  }
+
+  const byRep = new Map<string, { email: string; leads: typeof overdueLeads }>();
+  for (const lead of overdueLeads) {
+    if (!byRep.has(lead.userId)) byRep.set(lead.userId, { email: lead.repEmail, leads: [] });
+    byRep.get(lead.userId)!.leads.push(lead);
+  }
+
+  let emailsSent = 0;
+  for (const [, { email, leads: repLeads }] of byRep) {
+    const repName = email.split("@")[0];
+    const result = await sendPastDueReminderEmail({
+      toEmail: email,
+      repName,
+      leads: repLeads.map((l) => ({
+        companyName: l.companyName,
+        contactName: l.contactName,
+        followUpDate: l.followUpDate!,
+        status: l.status,
+        notes: l.notes,
+      })),
+    });
+    logs.push(`${result.sent ? "✓ Sent" : "○ Logged"} past-due alert to ${email} (${repLeads.length} overdue lead${repLeads.length !== 1 ? "s" : ""})`);
+    if (result.sent) emailsSent++;
+  }
+
   return { emailsSent, logs };
 }
 
@@ -194,6 +277,16 @@ export function startScheduler() {
       logger.info(result, "Follow-up reminder run complete");
     } catch (err) {
       logger.error({ err }, "Follow-up reminder run failed");
+    }
+  });
+
+  cron.schedule("0 8 * * *", async () => {
+    logger.info("Running daily past-due reminder check");
+    try {
+      const result = await runPastDueReminders();
+      logger.info(result, "Past-due reminder run complete");
+    } catch (err) {
+      logger.error({ err }, "Past-due reminder run failed");
     }
   });
 

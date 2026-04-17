@@ -22,6 +22,7 @@ const navItems = [
   { label: "My Leads", icon: TrendingUp, href: "/leads" },
   { label: "Customers", icon: Building2, href: "/customers" },
   { label: "Messages", icon: MessageSquare, href: "/team" },
+  { label: "Reminders", icon: Bell, href: "/reminders" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
 

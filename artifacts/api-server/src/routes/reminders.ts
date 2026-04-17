@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, reminderSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
-import { runFollowUpReminders, runSummaryEmails } from "../lib/scheduler";
+import { runFollowUpReminders, runSummaryEmails, runPastDueReminders } from "../lib/scheduler";
 
 const router = Router();
 
@@ -22,7 +22,7 @@ router.get("/admin/reminders", requireAdmin, async (_req, res) => {
 });
 
 router.put("/admin/reminders", requireAdmin, async (req, res) => {
-  const { followUpReminderEnabled, followUpDaysBefore, summaryEnabled } = req.body;
+  const { followUpReminderEnabled, followUpDaysBefore, summaryEnabled, pastDueReminderEnabled } = req.body;
 
   await ensureSettings();
 
@@ -32,6 +32,7 @@ router.put("/admin/reminders", requireAdmin, async (req, res) => {
       ...(followUpReminderEnabled !== undefined && { followUpReminderEnabled }),
       ...(followUpDaysBefore !== undefined && { followUpDaysBefore }),
       ...(summaryEnabled !== undefined && { summaryEnabled }),
+      ...(pastDueReminderEnabled !== undefined && { pastDueReminderEnabled }),
       updatedAt: new Date(),
     })
     .where(eq(reminderSettingsTable.id, 1))
@@ -47,6 +48,11 @@ router.post("/admin/reminders/send-followup", requireAdmin, async (_req, res) =>
 
 router.post("/admin/reminders/send-summary", requireAdmin, async (_req, res) => {
   const result = await runSummaryEmails();
+  res.json(result);
+});
+
+router.post("/admin/reminders/send-pastdue", requireAdmin, async (_req, res) => {
+  const result = await runPastDueReminders();
   res.json(result);
 });
 

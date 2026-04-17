@@ -5,3 +5,4 @@ export * from "./reminder-settings";
 export * from "./team";
 export * from "./app-settings";
 export * from "./account-notes";
+export * from "./user-reminder-prefs";
