@@ -169,7 +169,7 @@ export default function DashboardPage() {
           <StatCard label="My Leads" value={summary?.myLeads} icon={TrendingUp} />
           <StatCard label="Follow-ups Today" value={summary?.followUpsToday} icon={Calendar} accent />
           <StatCard label="Total Customers" value={summary?.totalCustomers} icon={Building2} />
-          <StatCard label="Total Leads" value={summary?.totalLeads} icon={Users} />
+          <StatCard label="Active Leads" value={summary?.totalLeads} icon={Users} />
           <StatCard label="Close Win" value={summary?.wonLeads} icon={CheckCircle} />
           <WeeklyGoalCard
             leadsThisWeek={summary?.leadsThisWeek}

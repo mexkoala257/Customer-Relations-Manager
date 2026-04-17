@@ -19,7 +19,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
   monday.setDate(now.getDate() - daysFromMonday);
   monday.setHours(0, 0, 0, 0);
 
-  const [totalLeadsRow] = await db.select({ count: count() }).from(leadsTable);
+  const [totalLeadsRow] = await db.select({ count: count() }).from(leadsTable).where(eq(leadsTable.isActive, true));
   const [myLeadsRow] = await db
     .select({ count: count() })
     .from(leadsTable)
