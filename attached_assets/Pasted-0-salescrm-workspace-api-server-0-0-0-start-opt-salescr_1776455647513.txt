@@ -1,0 +1,33 @@
+0|salescrm  | > @workspace/api-server@0.0.0 start /opt/salescrm/artifacts/api-server
+0|salescrm  | > node --enable-source-maps ./dist/index.mjs
+0|salescrm  | /opt/salescrm/lib/db/src/index.ts:8
+0|salescrm  |   throw new Error(
+0|salescrm  |         ^
+0|salescrm  | Error: DATABASE_URL must be set. Did you forget to provision a database?
+0|salescrm  |     at <anonymous> (/opt/salescrm/lib/db/src/index.ts:8:9)
+0|salescrm  |     at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+0|salescrm  |     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+0|salescrm  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+0|salescrm  | Node.js v22.22.2
+0|salescrm  | /opt/salescrm/artifacts/api-server:
+0|salescrm  |  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 start: `node --enable-source-maps ./dist/index.mjs`
+0|salescrm  | Exit status 1
+PM2         | App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2         | App [salescrm:0] starting in -fork mode-
+PM2         | App [salescrm:0] online
+0|salescrm  | > @workspace/api-server@0.0.0 start /opt/salescrm/artifacts/api-server
+0|salescrm  | > node --enable-source-maps ./dist/index.mjs
+0|salescrm  | /opt/salescrm/lib/db/src/index.ts:8
+0|salescrm  |   throw new Error(
+0|salescrm  |         ^
+0|salescrm  | Error: DATABASE_URL must be set. Did you forget to provision a database?
+0|salescrm  |     at <anonymous> (/opt/salescrm/lib/db/src/index.ts:8:9)
+0|salescrm  |     at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+0|salescrm  |     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+0|salescrm  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+0|salescrm  | Node.js v22.22.2
+0|salescrm  | /opt/salescrm/artifacts/api-server:
+0|salescrm  |  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 start: `node --enable-source-maps ./dist/index.mjs`
+0|salescrm  | Exit status 1
+PM2         | App [salescrm:0] exited with code [1] via signal [SIGINT]
+PM2         | Script /usr/bin/bash had too many unstable restarts (16). Stopped. "errored"
