@@ -5,18 +5,80 @@ import {
   useUpdateCustomer,
   useSendFollowupEmail,
   getGetCustomerQueryKey,
+  customFetch,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X } from "lucide-react";
+import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X, StickyNote, Trash2 } from "lucide-react";
+
+interface AccountNote {
+  id: string;
+  customerId: string;
+  userId: string;
+  body: string;
+  createdAt: string;
+  author: { id: string; email: string; staffId: number } | null;
+}
 
 import { STATUS_BADGE } from "@/lib/lead-status";
 
 export default function CustomerDetailPage({ id }: { id: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { userId, userRole } = useAuth();
+  const isAdmin = userRole === "admin" || userRole === "superadmin";
+
+  const notesQueryKey = ["account-notes", id];
+  const { data: notes = [], isLoading: notesLoading } = useQuery<AccountNote[]>({
+    queryKey: notesQueryKey,
+    queryFn: () => customFetch<AccountNote[]>(`/api/customers/${id}/notes`),
+    enabled: !!id,
+  });
+
+  const [noteText, setNoteText] = useState("");
+
+  const addNoteMutation = useMutation({
+    mutationFn: (body: string) =>
+      customFetch<AccountNote>(`/api/customers/${id}/notes`, {
+        method: "POST",
+        body: JSON.stringify({ body }),
+        headers: { "Content-Type": "application/json" },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notesQueryKey });
+      setNoteText("");
+    },
+    onError: () => toast({ title: "Failed to add note", variant: "destructive" }),
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: (noteId: string) =>
+      customFetch(`/api/customers/${id}/notes/${noteId}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: notesQueryKey }),
+    onError: () => toast({ title: "Failed to delete note", variant: "destructive" }),
+  });
+
+  function handleAddNote(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = noteText.trim();
+    if (!trimmed) return;
+    addNoteMutation.mutate(trimmed);
+  }
+
+  function formatNoteDate(iso: string) {
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
 
   const { data: customer, isLoading } = useGetCustomer(id, {
     query: { queryKey: getGetCustomerQueryKey(id), enabled: !!id },
@@ -351,6 +413,94 @@ export default function CustomerDetailPage({ id }: { id: string }) {
                 )}
               </div>
             </>
+          )}
+        </div>
+
+        {/* Quick Notes */}
+        <div className="bg-card border border-card-border rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <StickyNote className="w-4 h-4 text-muted-foreground" />
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Quick Notes
+              </h2>
+            </div>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+              {notes.length} {notes.length === 1 ? "note" : "notes"}
+            </span>
+          </div>
+
+          <form onSubmit={handleAddNote} className="mb-5">
+            <textarea
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="Type a quick note about this account..."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              data-testid="note-textarea"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  handleAddNote(e as any);
+                }
+              }}
+            />
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs text-muted-foreground">Cmd+Enter to post</span>
+              <button
+                type="submit"
+                disabled={!noteText.trim() || addNoteMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
+                data-testid="add-note-button"
+              >
+                {addNoteMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <StickyNote className="w-4 h-4" />
+                )}
+                Post Note
+              </button>
+            </div>
+          </form>
+
+          {notesLoading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : notes.length === 0 ? (
+            <p className="text-sm text-center text-muted-foreground py-4">
+              No notes yet. Add the first one above.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {notes.map((note) => (
+                <div key={note.id} className="flex gap-2 group" data-testid={`note-${note.id}`}>
+                  <div className="flex-1 bg-muted/40 rounded-xl px-4 py-3 border border-border/40">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-semibold text-foreground">
+                        {note.author?.email?.split("@")[0] ?? "Unknown"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatNoteDate(note.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                      {note.body}
+                    </p>
+                  </div>
+                  {(isAdmin || note.userId === userId) && (
+                    <button
+                      onClick={() => deleteNoteMutation.mutate(note.id)}
+                      disabled={deleteNoteMutation.isPending}
+                      className="p-1.5 self-start opacity-0 group-hover:opacity-100 rounded-lg hover:bg-destructive/10 text-destructive transition-all flex-shrink-0 mt-1"
+                      title="Delete note"
+                      data-testid={`delete-note-${note.id}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
