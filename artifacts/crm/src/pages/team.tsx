@@ -6,10 +6,46 @@ import { getToken } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   MessageSquare, Zap, ImageIcon, FileText,
-  Send, Trash2, Loader2, Upload, X, FileDown,
+  Send, Trash2, Loader2, Upload, X, FileDown, Link2, Copy, Check,
 } from "lucide-react";
 
 const API = (path: string) => `/api/team/${path}`;
+const FULL_URL = (path: string) => `${window.location.origin}/api/team/${path}`;
+
+function EndpointFooter({ path }: { path: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = FULL_URL(path);
+
+  function copy() {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="mt-6 flex items-center gap-2 px-4 py-3 bg-muted/50 border border-border/60 rounded-xl text-xs text-muted-foreground">
+      <Link2 className="w-3.5 h-3.5 flex-shrink-0" />
+      <span className="font-medium mr-1">JSON endpoint:</span>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-mono truncate text-primary hover:underline underline-offset-2 flex-1 min-w-0"
+        data-testid="endpoint-url"
+      >
+        {url}
+      </a>
+      <button
+        onClick={copy}
+        className="flex-shrink-0 p-1.5 rounded-lg hover:bg-muted transition"
+        title="Copy URL"
+      >
+        {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
+    </div>
+  );
+}
 
 function authHeaders(contentType = "application/json") {
   return { "Content-Type": contentType, Authorization: `Bearer ${getToken()}` };
@@ -149,6 +185,7 @@ function MessagesTab({ userEmail, userId, isAdmin }: { userEmail: string; userId
           ))}
         </div>
       )}
+      <EndpointFooter path="messages" />
     </div>
   );
 }
@@ -250,6 +287,7 @@ function UpdatesTab({ userId, isAdmin }: { userId: string; isAdmin: boolean }) {
           ))}
         </div>
       )}
+      <EndpointFooter path="updates" />
     </div>
   );
 }
