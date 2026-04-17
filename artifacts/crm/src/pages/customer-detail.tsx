@@ -4,7 +4,9 @@ import {
   useGetCustomer,
   useUpdateCustomer,
   useSendFollowupEmail,
+  useCreateLead,
   getGetCustomerQueryKey,
+  getListLeadsQueryKey,
   customFetch,
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
@@ -12,7 +14,8 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X, StickyNote, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X, StickyNote, Trash2, PlusCircle } from "lucide-react";
+import { LEAD_STATUSES } from "@/lib/lead-status";
 
 interface AccountNote {
   id: string;
@@ -60,6 +63,56 @@ export default function CustomerDetailPage({ id }: { id: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: notesQueryKey }),
     onError: () => toast({ title: "Failed to delete note", variant: "destructive" }),
   });
+
+  const [showNewLeadModal, setShowNewLeadModal] = useState(false);
+  const [leadForm, setLeadForm] = useState({
+    status: "New" as typeof LEAD_STATUSES[number],
+    contactDate: new Date().toISOString().split("T")[0],
+    followUpDate: "",
+    currentSupplier: "",
+    temperature: "" as "" | "Hot" | "Medium" | "Cold",
+    productsDiscussed: "",
+    notes: "",
+  });
+
+  const createLeadMutation = useCreateLead({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetCustomerQueryKey(id) });
+        toast({ title: "Lead created successfully" });
+        setShowNewLeadModal(false);
+        setLeadForm({
+          status: "New",
+          contactDate: new Date().toISOString().split("T")[0],
+          followUpDate: "",
+          currentSupplier: "",
+          temperature: "",
+          productsDiscussed: "",
+          notes: "",
+        });
+      },
+      onError: () => toast({ title: "Failed to create lead", variant: "destructive" }),
+    },
+  });
+
+  function handleCreateLead(e: React.FormEvent) {
+    e.preventDefault();
+    createLeadMutation.mutate({
+      data: {
+        customerId: id,
+        status: leadForm.status,
+        notes: leadForm.notes,
+        followUpDate: leadForm.followUpDate || undefined,
+        metadata: {
+          ...(leadForm.contactDate ? { contactDate: leadForm.contactDate } : {}),
+          ...(leadForm.currentSupplier ? { currentSupplier: leadForm.currentSupplier } : {}),
+          ...(leadForm.temperature ? { temperature: leadForm.temperature } : {}),
+          ...(leadForm.productsDiscussed ? { productsDiscussed: leadForm.productsDiscussed } : {}),
+        },
+      },
+    });
+  }
 
   function handleAddNote(e: React.FormEvent) {
     e.preventDefault();
@@ -221,6 +274,16 @@ export default function CustomerDetailPage({ id }: { id: string }) {
               <MapPin className="w-4 h-4" />
               Navigate
             </a>
+          )}
+          {!isEditing && (
+            <button
+              onClick={() => setShowNewLeadModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition flex-shrink-0"
+              data-testid="new-lead-from-customer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              New Lead
+            </button>
           )}
         </div>
 
@@ -642,6 +705,163 @@ export default function CustomerDetailPage({ id }: { id: string }) {
           )}
         </div>
       </div>
+
+      {/* New Lead Modal */}
+      {showNewLeadModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowNewLeadModal(false); }}
+          data-testid="new-lead-modal"
+        >
+          <div className="bg-card border border-card-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+              <div>
+                <h2 className="font-bold text-base" data-testid="new-lead-modal-title">New Lead</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{customer.companyName}</p>
+              </div>
+              <button
+                onClick={() => setShowNewLeadModal(false)}
+                className="p-1.5 rounded-lg hover:bg-muted transition text-muted-foreground"
+                data-testid="close-new-lead-modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleCreateLead} className="px-6 py-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Status
+                </label>
+                <select
+                  value={leadForm.status}
+                  onChange={(e) => setLeadForm(f => ({ ...f, status: e.target.value as typeof LEAD_STATUSES[number] }))}
+                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="modal-lead-status"
+                >
+                  {LEAD_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Contact Date
+                  </label>
+                  <input
+                    type="date"
+                    value={leadForm.contactDate}
+                    onChange={(e) => setLeadForm(f => ({ ...f, contactDate: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="modal-lead-contact-date"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Follow-up Date <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={leadForm.followUpDate}
+                    onChange={(e) => setLeadForm(f => ({ ...f, followUpDate: e.target.value }))}
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="modal-lead-followup-date"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Current Supplier
+                  </label>
+                  <input
+                    type="text"
+                    value={leadForm.currentSupplier}
+                    onChange={(e) => setLeadForm(f => ({ ...f, currentSupplier: e.target.value }))}
+                    placeholder="Who supplies them now?"
+                    className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="modal-lead-supplier"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Temperature
+                  </label>
+                  <select
+                    value={leadForm.temperature}
+                    onChange={(e) => setLeadForm(f => ({ ...f, temperature: e.target.value as "" | "Hot" | "Medium" | "Cold" }))}
+                    className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="modal-lead-temperature"
+                  >
+                    <option value="">Select...</option>
+                    <option value="Hot">🔥 Hot</option>
+                    <option value="Medium">🌤 Medium</option>
+                    <option value="Cold">❄️ Cold</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Products &amp; Pricing Discussed
+                </label>
+                <textarea
+                  value={leadForm.productsDiscussed}
+                  onChange={(e) => setLeadForm(f => ({ ...f, productsDiscussed: e.target.value }))}
+                  rows={2}
+                  placeholder="List products and pricing discussed..."
+                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  data-testid="modal-lead-products"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Notes
+                </label>
+                <textarea
+                  value={leadForm.notes}
+                  onChange={(e) => setLeadForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={3}
+                  placeholder="Add notes about this interaction..."
+                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  data-testid="modal-lead-notes"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowNewLeadModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-input text-sm font-medium hover:bg-muted transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createLeadMutation.isPending || !leadForm.followUpDate}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
+                  data-testid="modal-submit-lead"
+                >
+                  {createLeadMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  Create Lead
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
