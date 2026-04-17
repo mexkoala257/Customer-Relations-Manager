@@ -15,6 +15,7 @@ import {
   FileText,
   MessageSquare,
   SlidersHorizontal,
+  BookOpen,
 } from "lucide-react";
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
   { label: "Messages", icon: MessageSquare, href: "/team" },
   { label: "Reminders", icon: Bell, href: "/reminders" },
   { label: "Settings", icon: Settings, href: "/settings" },
+  { label: "User Guide", icon: BookOpen, href: "/guide" },
 ];
 
 const adminItems = [

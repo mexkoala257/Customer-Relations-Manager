@@ -23,6 +23,7 @@ import AdminRemindersPage from "@/pages/admin-reminders";
 import AdminReportsPage from "@/pages/admin-reports";
 import SettingsPage from "@/pages/settings";
 import MyRemindersPage from "@/pages/my-reminders";
+import GuidePage from "@/pages/guide";
 import TeamPage from "@/pages/team";
 import NotFound from "@/pages/not-found";
 
@@ -159,6 +160,10 @@ function AppRouter() {
 
         <Route path="/team">
           <ProtectedRoute component={TeamPage} />
+        </Route>
+
+        <Route path="/guide">
+          <ProtectedRoute component={GuidePage} />
         </Route>
 
         <Route component={NotFound} />
