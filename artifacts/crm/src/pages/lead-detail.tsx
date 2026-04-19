@@ -11,7 +11,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, MapPin, Loader2, Save, UserCog } from "lucide-react";
+import { ArrowLeft, MapPin, Loader2, Save, UserCog, CheckCircle2 } from "lucide-react";
 
 import { LEAD_STATUSES } from "@/lib/lead-status";
 const STATUS_OPTIONS = [...LEAD_STATUSES];
@@ -60,7 +60,17 @@ export default function LeadDetailPage({ id }: { id: string }) {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetLeadQueryKey(id) });
-        toast({ title: "Lead updated successfully" });
+        toast({
+          title: (
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+              Changes Saved
+            </span>
+          ),
+          description: "Lead details have been updated.",
+          variant: "success",
+          duration: 2000,
+        });
       },
       onError: () => {
         toast({ title: "Failed to update lead", variant: "destructive" });
