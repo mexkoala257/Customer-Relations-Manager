@@ -10,7 +10,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { PlusCircle, Trash2, Loader2, X, KeyRound, Eye, EyeOff, LockKeyhole, LockKeyholeOpen } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, X, KeyRound, Eye, EyeOff, LockKeyhole, LockKeyholeOpen, Pencil } from "lucide-react";
+import { useLocation } from "wouter";
 
 function GoalInput({ userId, currentGoal }: { userId: string; currentGoal: number | null | undefined }) {
   const [value, setValue] = useState<string>(currentGoal != null ? String(currentGoal) : "");
@@ -54,55 +55,6 @@ function GoalInput({ userId, currentGoal }: { userId: string; currentGoal: numbe
   );
 }
 
-function InlineTextInput({
-  userId,
-  field,
-  currentValue,
-  placeholder,
-  testId,
-}: {
-  userId: string;
-  field: "fullName" | "phone";
-  currentValue: string | null | undefined;
-  placeholder: string;
-  testId: string;
-}) {
-  const [value, setValue] = useState(currentValue ?? "");
-  const [saving, setSaving] = useState(false);
-  const queryClient = useQueryClient();
-
-  const updateMutation = useUpdateUser({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
-        setSaving(false);
-      },
-      onError: () => setSaving(false),
-    },
-  });
-
-  function save() {
-    if (value.trim() === (currentValue ?? "")) return;
-    setSaving(true);
-    updateMutation.mutate({ id: userId, data: { [field]: value.trim() } });
-  }
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={save}
-        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-        placeholder={placeholder}
-        className="w-32 px-2.5 py-1.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        data-testid={testId}
-      />
-      {saving && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-    </div>
-  );
-}
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "sales", label: "Sales" },
@@ -313,6 +265,7 @@ export default function AdminUsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { userId: currentUserId } = useAuth();
+  const [, navigate] = useLocation();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", staffId: "", role: "sales" });
   const [resetTarget, setResetTarget] = useState<{ id: string; email: string } | null>(null);
@@ -501,12 +454,6 @@ export default function AdminUsersPage() {
                     Email
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Full Name
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Staff ID
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -541,24 +488,6 @@ export default function AdminUsersPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3.5">
-                      <InlineTextInput
-                        userId={user.id}
-                        field="fullName"
-                        currentValue={user.fullName}
-                        placeholder="Add name…"
-                        testId={`fullname-input-${user.id}`}
-                      />
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <InlineTextInput
-                        userId={user.id}
-                        field="phone"
-                        currentValue={user.phone}
-                        placeholder="Add phone…"
-                        testId={`phone-input-${user.id}`}
-                      />
-                    </td>
                     <td className="px-4 py-3.5 text-muted-foreground">{user.staffId}</td>
                     <td className="px-4 py-3.5">
                       <InlineRoleSelect
@@ -575,6 +504,14 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1 justify-end">
+                        <button
+                          onClick={() => navigate(`/admin/users/${user.id}`)}
+                          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                          title="Edit user"
+                          data-testid={`edit-user-${user.id}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                         {user.id !== currentUserId && (
                           <button
                             onClick={() => handleLockToggle(user.id, user.email, !!user.isLocked)}
@@ -621,7 +558,7 @@ export default function AdminUsersPage() {
         )}
 
         <p className="text-xs text-muted-foreground mt-3">
-          Click any field in the Full Name, Phone, or Weekly Goal columns to edit it inline — changes save automatically when you press Enter or click away.
+          Click the pencil icon to open the full edit page for a user. Set a weekly lead goal inline by typing in the Weekly Goal column and pressing Enter.
         </p>
       </div>
 

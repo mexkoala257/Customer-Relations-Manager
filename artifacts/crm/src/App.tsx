@@ -20,6 +20,7 @@ import CustomerDetailPage from "@/pages/customer-detail";
 import CustomerNewPage from "@/pages/customer-new";
 import QuickEntryPage from "@/pages/quick-entry";
 import AdminUsersPage from "@/pages/admin-users";
+import AdminUserEditPage from "@/pages/admin-user-edit";
 import AdminRemindersPage from "@/pages/admin-reminders";
 import AdminReportsPage from "@/pages/admin-reports";
 import SettingsPage from "@/pages/settings";
@@ -138,6 +139,10 @@ function AppRouter() {
 
         <Route path="/customers">
           <ProtectedRoute component={CustomersPage} />
+        </Route>
+
+        <Route path="/admin/users/:id">
+          {(params) => <ProtectedRoute component={AdminUserEditPage} id={params.id} adminOnly />}
         </Route>
 
         <Route path="/admin/users">
