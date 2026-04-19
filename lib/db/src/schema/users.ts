@@ -10,6 +10,7 @@ export const usersTable = pgTable("users", {
   role: text("role", { enum: ["superadmin", "admin", "sales", "data-entry"] }).notNull().default("sales"),
   weeklyLeadGoal: integer("weekly_lead_goal"),
   mustChangePassword: boolean("must_change_password").notNull().default(false),
+  isLocked: boolean("is_locked").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

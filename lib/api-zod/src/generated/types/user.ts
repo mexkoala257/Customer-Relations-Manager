@@ -12,5 +12,7 @@ export interface User {
   email: string;
   staffId: number;
   role: UserRole;
+  weeklyLeadGoal?: number | null;
+  isLocked?: boolean;
   createdAt?: string;
 }

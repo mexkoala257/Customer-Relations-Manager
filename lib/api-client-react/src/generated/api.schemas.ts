@@ -34,6 +34,8 @@ export interface User {
   email: string;
   staffId: number;
   role: UserRole;
+  weeklyLeadGoal?: number | null;
+  isLocked?: boolean;
   createdAt?: string;
 }
 
@@ -70,6 +72,8 @@ export interface UpdateUserBody {
   password?: string;
   staffId?: number;
   role?: UpdateUserBodyRole;
+  weeklyLeadGoal?: number | null;
+  isLocked?: boolean;
 }
 
 export interface Customer {
@@ -86,6 +90,8 @@ export interface Customer {
   state?: string | null;
   /** @nullable */
   zipCode?: string | null;
+  /** @nullable */
+  contactRole?: string | null;
   createdAt?: string;
 }
 
@@ -142,6 +148,8 @@ export interface CustomerProfile {
   state?: string | null;
   /** @nullable */
   zipCode?: string | null;
+  /** @nullable */
+  contactRole?: string | null;
   createdAt?: string;
   leads: LeadWithDetails[];
 }
@@ -154,6 +162,7 @@ export interface CreateCustomerBody {
   city?: string;
   state?: string;
   zipCode?: string;
+  contactRole?: string;
 }
 
 export interface UpdateCustomerBody {
@@ -164,6 +173,7 @@ export interface UpdateCustomerBody {
   city?: string;
   state?: string;
   zipCode?: string;
+  contactRole?: string;
 }
 
 export type LeadStatus = (typeof LeadStatus)[keyof typeof LeadStatus];
@@ -260,6 +270,8 @@ export interface DashboardSummary {
   totalCustomers: number;
   wonLeads: number;
   newLeads: number;
+  leadsThisWeek: number;
+  weeklyLeadGoal?: number | null;
 }
 
 export interface StatusCount {

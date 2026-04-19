@@ -20,6 +20,7 @@ router.get("/users", requireAdmin, async (_req, res): Promise<void> => {
     staffId: usersTable.staffId,
     role: usersTable.role,
     weeklyLeadGoal: usersTable.weeklyLeadGoal,
+    isLocked: usersTable.isLocked,
     createdAt: usersTable.createdAt,
   }).from(usersTable)
     .where(ne(usersTable.role, "superadmin"))
@@ -100,6 +101,9 @@ router.patch("/users/:id", requireAuth, async (req, res): Promise<void> => {
   if (parsed.data.weeklyLeadGoal !== undefined) {
     updates.weeklyLeadGoal = parsed.data.weeklyLeadGoal;
   }
+  if (parsed.data.isLocked !== undefined) {
+    updates.isLocked = parsed.data.isLocked;
+  }
 
   const [user] = await db.update(usersTable)
     .set(updates as Partial<typeof usersTable.$inferInsert>)
@@ -110,6 +114,7 @@ router.patch("/users/:id", requireAuth, async (req, res): Promise<void> => {
       staffId: usersTable.staffId,
       role: usersTable.role,
       weeklyLeadGoal: usersTable.weeklyLeadGoal,
+      isLocked: usersTable.isLocked,
       createdAt: usersTable.createdAt,
     });
 

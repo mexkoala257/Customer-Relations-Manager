@@ -20,5 +20,7 @@ export interface Customer {
   state?: string | null;
   /** @nullable */
   zipCode?: string | null;
+  /** @nullable */
+  contactRole?: string | null;
   createdAt?: string;
 }

@@ -10,7 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { PlusCircle, Trash2, Loader2, X, KeyRound, Eye, EyeOff } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, X, KeyRound, Eye, EyeOff, LockKeyhole, LockKeyholeOpen } from "lucide-react";
 
 function GoalInput({ userId, currentGoal }: { userId: string; currentGoal: number | null | undefined }) {
   const [value, setValue] = useState<string>(currentGoal != null ? String(currentGoal) : "");
@@ -266,6 +266,34 @@ export default function AdminUsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", staffId: "", role: "sales" });
   const [resetTarget, setResetTarget] = useState<{ id: string; email: string } | null>(null);
+  const [lockingId, setLockingId] = useState<string | null>(null);
+
+  const lockMutation = useUpdateUser({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+        setLockingId(null);
+        const locked = (variables.data as { isLocked?: boolean }).isLocked;
+        toast({
+          title: locked ? "User locked" : "User unlocked",
+          description: locked
+            ? "The user can no longer log in."
+            : "The user can log in again.",
+          variant: locked ? "destructive" : "default",
+        });
+      },
+      onError: () => {
+        setLockingId(null);
+        toast({ title: "Failed to update lock status", variant: "destructive" });
+      },
+    },
+  });
+
+  function handleLockToggle(id: string, email: string, currentlyLocked: boolean) {
+    if (!currentlyLocked && !confirm(`Lock ${email}? They will immediately lose access to the app.`)) return;
+    setLockingId(id);
+    lockMutation.mutate({ id, data: { isLocked: !currentlyLocked } });
+  }
 
   const { data: users, isLoading } = useListUsers();
 
@@ -439,8 +467,24 @@ export default function AdminUsersPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {(users ?? []).map((user) => (
-                  <tr key={user.id} className="hover:bg-muted/40 transition-colors" data-testid={`user-row-${user.id}`}>
-                    <td className="px-4 py-3.5 font-medium">{user.email}</td>
+                  <tr
+                    key={user.id}
+                    className={`hover:bg-muted/40 transition-colors ${user.isLocked ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}
+                    data-testid={`user-row-${user.id}`}
+                  >
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-medium ${user.isLocked ? "text-amber-700 dark:text-amber-400" : ""}`}>
+                          {user.email}
+                        </span>
+                        {user.isLocked && (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                            <LockKeyhole className="w-3 h-3" />
+                            Locked
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3.5 text-muted-foreground">{user.staffId}</td>
                     <td className="px-4 py-3.5">
                       <InlineRoleSelect
@@ -457,6 +501,27 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1 justify-end">
+                        {user.id !== currentUserId && (
+                          <button
+                            onClick={() => handleLockToggle(user.id, user.email, !!user.isLocked)}
+                            disabled={lockingId === user.id}
+                            className={`p-1.5 rounded-lg transition ${
+                              user.isLocked
+                                ? "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            }`}
+                            title={user.isLocked ? "Unlock user" : "Lock user"}
+                            data-testid={`lock-user-${user.id}`}
+                          >
+                            {lockingId === user.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : user.isLocked ? (
+                              <LockKeyholeOpen className="w-4 h-4" />
+                            ) : (
+                              <LockKeyhole className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={() => setResetTarget({ id: user.id, email: user.email })}
                           className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"

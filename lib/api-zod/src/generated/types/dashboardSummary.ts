@@ -13,4 +13,6 @@ export interface DashboardSummary {
   totalCustomers: number;
   wonLeads: number;
   newLeads: number;
+  leadsThisWeek: number;
+  weeklyLeadGoal?: number | null;
 }

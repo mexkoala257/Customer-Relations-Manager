@@ -29,7 +29,9 @@ export const LoginResponse = zod.object({
     id: zod.string(),
     email: zod.string(),
     staffId: zod.number(),
-    role: zod.enum(["admin", "sales", "data-entry"]),
+    role: zod.enum(["admin", "sales"]),
+    weeklyLeadGoal: zod.number().nullish(),
+    isLocked: zod.boolean().optional(),
     createdAt: zod.string().optional(),
   }),
 });
@@ -41,7 +43,9 @@ export const GetMeResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
   staffId: zod.number(),
-  role: zod.enum(["admin", "sales", "data-entry"]),
+  role: zod.enum(["admin", "sales"]),
+  weeklyLeadGoal: zod.number().nullish(),
+  isLocked: zod.boolean().optional(),
   createdAt: zod.string().optional(),
 });
 
@@ -59,8 +63,9 @@ export const ListUsersResponseItem = zod.object({
   id: zod.string(),
   email: zod.string(),
   staffId: zod.number(),
-  role: zod.enum(["admin", "sales", "data-entry"]),
-  weeklyLeadGoal: zod.number().nullable().optional(),
+  role: zod.enum(["admin", "sales"]),
+  weeklyLeadGoal: zod.number().nullish(),
+  isLocked: zod.boolean().optional(),
   createdAt: zod.string().optional(),
 });
 export const ListUsersResponse = zod.array(ListUsersResponseItem);
@@ -72,7 +77,7 @@ export const CreateUserBody = zod.object({
   email: zod.string(),
   password: zod.string(),
   staffId: zod.number(),
-  role: zod.enum(["admin", "sales", "data-entry"]),
+  role: zod.enum(["admin", "sales"]),
 });
 
 /**
@@ -86,7 +91,9 @@ export const GetUserResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
   staffId: zod.number(),
-  role: zod.enum(["admin", "sales", "data-entry"]),
+  role: zod.enum(["admin", "sales"]),
+  weeklyLeadGoal: zod.number().nullish(),
+  isLocked: zod.boolean().optional(),
   createdAt: zod.string().optional(),
 });
 
@@ -101,15 +108,18 @@ export const UpdateUserBody = zod.object({
   email: zod.string().optional(),
   password: zod.string().optional(),
   staffId: zod.number().optional(),
-  role: zod.enum(["admin", "sales", "data-entry"]).optional(),
-  weeklyLeadGoal: zod.number().nullable().optional(),
+  role: zod.enum(["admin", "sales"]).optional(),
+  weeklyLeadGoal: zod.number().nullish(),
+  isLocked: zod.boolean().optional(),
 });
 
 export const UpdateUserResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
   staffId: zod.number(),
-  role: zod.enum(["admin", "sales", "data-entry"]),
+  role: zod.enum(["admin", "sales"]),
+  weeklyLeadGoal: zod.number().nullish(),
+  isLocked: zod.boolean().optional(),
   createdAt: zod.string().optional(),
 });
 
@@ -204,13 +214,16 @@ export const GetCustomerResponse = zod.object({
         city: zod.string().nullish(),
         state: zod.string().nullish(),
         zipCode: zod.string().nullish(),
+        contactRole: zod.string().nullish(),
         createdAt: zod.string().optional(),
       }),
       user: zod.object({
         id: zod.string(),
         email: zod.string(),
         staffId: zod.number(),
-        role: zod.enum(["admin", "sales", "data-entry"]),
+        role: zod.enum(["admin", "sales"]),
+        weeklyLeadGoal: zod.number().nullish(),
+        isLocked: zod.boolean().optional(),
         createdAt: zod.string().optional(),
       }),
     }),
@@ -295,13 +308,16 @@ export const ListLeadsResponseItem = zod.object({
     city: zod.string().nullish(),
     state: zod.string().nullish(),
     zipCode: zod.string().nullish(),
+    contactRole: zod.string().nullish(),
     createdAt: zod.string().optional(),
   }),
   user: zod.object({
     id: zod.string(),
     email: zod.string(),
     staffId: zod.number(),
-    role: zod.enum(["admin", "sales", "data-entry"]),
+    role: zod.enum(["admin", "sales"]),
+    weeklyLeadGoal: zod.number().nullish(),
+    isLocked: zod.boolean().optional(),
     createdAt: zod.string().optional(),
   }),
 });
@@ -367,13 +383,16 @@ export const GetLeadResponse = zod.object({
     city: zod.string().nullish(),
     state: zod.string().nullish(),
     zipCode: zod.string().nullish(),
+    contactRole: zod.string().nullish(),
     createdAt: zod.string().optional(),
   }),
   user: zod.object({
     id: zod.string(),
     email: zod.string(),
     staffId: zod.number(),
-    role: zod.enum(["admin", "sales", "data-entry"]),
+    role: zod.enum(["admin", "sales"]),
+    weeklyLeadGoal: zod.number().nullish(),
+    isLocked: zod.boolean().optional(),
     createdAt: zod.string().optional(),
   }),
 });
@@ -448,7 +467,7 @@ export const GetDashboardSummaryResponse = zod.object({
   wonLeads: zod.number(),
   newLeads: zod.number(),
   leadsThisWeek: zod.number(),
-  weeklyLeadGoal: zod.number().nullable().optional(),
+  weeklyLeadGoal: zod.number().nullish(),
 });
 
 /**
@@ -484,13 +503,16 @@ export const GetRecentActivityResponseItem = zod.object({
     city: zod.string().nullish(),
     state: zod.string().nullish(),
     zipCode: zod.string().nullish(),
+    contactRole: zod.string().nullish(),
     createdAt: zod.string().optional(),
   }),
   user: zod.object({
     id: zod.string(),
     email: zod.string(),
     staffId: zod.number(),
-    role: zod.enum(["admin", "sales", "data-entry"]),
+    role: zod.enum(["admin", "sales"]),
+    weeklyLeadGoal: zod.number().nullish(),
+    isLocked: zod.boolean().optional(),
     createdAt: zod.string().optional(),
   }),
 });

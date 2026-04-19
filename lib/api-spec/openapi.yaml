@@ -544,6 +544,11 @@ components:
         role:
           type: string
           enum: [admin, sales]
+        weeklyLeadGoal:
+          type: integer
+          nullable: true
+        isLocked:
+          type: boolean
         createdAt:
           type: string
       required:
@@ -585,6 +590,8 @@ components:
         weeklyLeadGoal:
           type: integer
           nullable: true
+        isLocked:
+          type: boolean
 
     Customer:
       type: object

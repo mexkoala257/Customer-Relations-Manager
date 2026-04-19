@@ -12,4 +12,6 @@ export interface UpdateUserBody {
   password?: string;
   staffId?: number;
   role?: UpdateUserBodyRole;
+  weeklyLeadGoal?: number | null;
+  isLocked?: boolean;
 }

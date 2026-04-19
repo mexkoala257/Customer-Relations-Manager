@@ -41,6 +41,11 @@ router.post("/auth/login", loginLimiter, async (req, res): Promise<void> => {
     return;
   }
 
+  if (user.isLocked) {
+    res.status(403).json({ error: "Your account has been temporarily locked. Please contact your administrator." });
+    return;
+  }
+
   const token = signToken({ userId: user.id, email: user.email, role: user.role });
 
   res.json({

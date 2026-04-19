@@ -14,4 +14,5 @@ export interface UpdateCustomerBody {
   city?: string;
   state?: string;
   zipCode?: string;
+  contactRole?: string;
 }
