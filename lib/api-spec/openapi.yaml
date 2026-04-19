@@ -539,6 +539,10 @@ components:
           type: string
         email:
           type: string
+        fullName:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
         staffId:
           type: integer
         role:
@@ -579,6 +583,10 @@ components:
       type: object
       properties:
         email:
+          type: string
+        fullName:
+          type: string
+        phone:
           type: string
         password:
           type: string

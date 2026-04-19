@@ -17,6 +17,8 @@ router.get("/users", requireAdmin, async (_req, res): Promise<void> => {
   const users = await db.select({
     id: usersTable.id,
     email: usersTable.email,
+    fullName: usersTable.fullName,
+    phone: usersTable.phone,
     staffId: usersTable.staffId,
     role: usersTable.role,
     weeklyLeadGoal: usersTable.weeklyLeadGoal,
@@ -93,6 +95,8 @@ router.patch("/users/:id", requireAuth, async (req, res): Promise<void> => {
 
   const updates: Record<string, unknown> = {};
   if (parsed.data.email) updates.email = parsed.data.email;
+  if (parsed.data.fullName !== undefined) updates.fullName = parsed.data.fullName || null;
+  if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone || null;
   if (parsed.data.staffId !== undefined) updates.staffId = parsed.data.staffId;
   if (parsed.data.role) updates.role = parsed.data.role;
   if (parsed.data.password) {
@@ -111,6 +115,8 @@ router.patch("/users/:id", requireAuth, async (req, res): Promise<void> => {
     .returning({
       id: usersTable.id,
       email: usersTable.email,
+      fullName: usersTable.fullName,
+      phone: usersTable.phone,
       staffId: usersTable.staffId,
       role: usersTable.role,
       weeklyLeadGoal: usersTable.weeklyLeadGoal,

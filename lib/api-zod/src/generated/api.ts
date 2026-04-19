@@ -28,6 +28,8 @@ export const LoginResponse = zod.object({
   user: zod.object({
     id: zod.string(),
     email: zod.string(),
+    fullName: zod.string().nullish(),
+    phone: zod.string().nullish(),
     staffId: zod.number(),
     role: zod.enum(["admin", "sales"]),
     weeklyLeadGoal: zod.number().nullish(),
@@ -42,6 +44,8 @@ export const LoginResponse = zod.object({
 export const GetMeResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
+  fullName: zod.string().nullish(),
+  phone: zod.string().nullish(),
   staffId: zod.number(),
   role: zod.enum(["admin", "sales"]),
   weeklyLeadGoal: zod.number().nullish(),
@@ -62,6 +66,8 @@ export const LogoutResponse = zod.object({
 export const ListUsersResponseItem = zod.object({
   id: zod.string(),
   email: zod.string(),
+  fullName: zod.string().nullish(),
+  phone: zod.string().nullish(),
   staffId: zod.number(),
   role: zod.enum(["admin", "sales"]),
   weeklyLeadGoal: zod.number().nullish(),
@@ -90,6 +96,8 @@ export const GetUserParams = zod.object({
 export const GetUserResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
+  fullName: zod.string().nullish(),
+  phone: zod.string().nullish(),
   staffId: zod.number(),
   role: zod.enum(["admin", "sales"]),
   weeklyLeadGoal: zod.number().nullish(),
@@ -106,6 +114,8 @@ export const UpdateUserParams = zod.object({
 
 export const UpdateUserBody = zod.object({
   email: zod.string().optional(),
+  fullName: zod.string().optional(),
+  phone: zod.string().optional(),
   password: zod.string().optional(),
   staffId: zod.number().optional(),
   role: zod.enum(["admin", "sales"]).optional(),
@@ -116,6 +126,8 @@ export const UpdateUserBody = zod.object({
 export const UpdateUserResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
+  fullName: zod.string().nullish(),
+  phone: zod.string().nullish(),
   staffId: zod.number(),
   role: zod.enum(["admin", "sales"]),
   weeklyLeadGoal: zod.number().nullish(),
@@ -220,6 +232,8 @@ export const GetCustomerResponse = zod.object({
       user: zod.object({
         id: zod.string(),
         email: zod.string(),
+        fullName: zod.string().nullish(),
+        phone: zod.string().nullish(),
         staffId: zod.number(),
         role: zod.enum(["admin", "sales"]),
         weeklyLeadGoal: zod.number().nullish(),
@@ -314,6 +328,8 @@ export const ListLeadsResponseItem = zod.object({
   user: zod.object({
     id: zod.string(),
     email: zod.string(),
+    fullName: zod.string().nullish(),
+    phone: zod.string().nullish(),
     staffId: zod.number(),
     role: zod.enum(["admin", "sales"]),
     weeklyLeadGoal: zod.number().nullish(),
@@ -389,6 +405,8 @@ export const GetLeadResponse = zod.object({
   user: zod.object({
     id: zod.string(),
     email: zod.string(),
+    fullName: zod.string().nullish(),
+    phone: zod.string().nullish(),
     staffId: zod.number(),
     role: zod.enum(["admin", "sales"]),
     weeklyLeadGoal: zod.number().nullish(),
@@ -509,6 +527,8 @@ export const GetRecentActivityResponseItem = zod.object({
   user: zod.object({
     id: zod.string(),
     email: zod.string(),
+    fullName: zod.string().nullish(),
+    phone: zod.string().nullish(),
     staffId: zod.number(),
     role: zod.enum(["admin", "sales"]),
     weeklyLeadGoal: zod.number().nullish(),

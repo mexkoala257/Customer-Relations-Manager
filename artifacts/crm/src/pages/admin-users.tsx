@@ -54,6 +54,56 @@ function GoalInput({ userId, currentGoal }: { userId: string; currentGoal: numbe
   );
 }
 
+function InlineTextInput({
+  userId,
+  field,
+  currentValue,
+  placeholder,
+  testId,
+}: {
+  userId: string;
+  field: "fullName" | "phone";
+  currentValue: string | null | undefined;
+  placeholder: string;
+  testId: string;
+}) {
+  const [value, setValue] = useState(currentValue ?? "");
+  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+
+  const updateMutation = useUpdateUser({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+        setSaving(false);
+      },
+      onError: () => setSaving(false),
+    },
+  });
+
+  function save() {
+    if (value.trim() === (currentValue ?? "")) return;
+    setSaving(true);
+    updateMutation.mutate({ id: userId, data: { [field]: value.trim() } });
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        placeholder={placeholder}
+        className="w-32 px-2.5 py-1.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        data-testid={testId}
+      />
+      {saving && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+    </div>
+  );
+}
+
 const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "sales", label: "Sales" },
   { value: "data-entry", label: "Data Entry" },
@@ -451,6 +501,12 @@ export default function AdminUsersPage() {
                     Email
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Full Name
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Phone
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Staff ID
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -484,6 +540,24 @@ export default function AdminUsersPage() {
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <InlineTextInput
+                        userId={user.id}
+                        field="fullName"
+                        currentValue={user.fullName}
+                        placeholder="Add name…"
+                        testId={`fullname-input-${user.id}`}
+                      />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <InlineTextInput
+                        userId={user.id}
+                        field="phone"
+                        currentValue={user.phone}
+                        placeholder="Add phone…"
+                        testId={`phone-input-${user.id}`}
+                      />
                     </td>
                     <td className="px-4 py-3.5 text-muted-foreground">{user.staffId}</td>
                     <td className="px-4 py-3.5">
@@ -547,7 +621,7 @@ export default function AdminUsersPage() {
         )}
 
         <p className="text-xs text-muted-foreground mt-3">
-          Set a weekly lead goal per rep by typing a number in the Weekly Goal column and pressing Enter.
+          Click any field in the Full Name, Phone, or Weekly Goal columns to edit it inline — changes save automatically when you press Enter or click away.
         </p>
       </div>
 

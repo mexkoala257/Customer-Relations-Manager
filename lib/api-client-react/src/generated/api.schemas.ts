@@ -32,6 +32,10 @@ export const UserRole = {
 export interface User {
   id: string;
   email: string;
+  /** @nullable */
+  fullName?: string | null;
+  /** @nullable */
+  phone?: string | null;
   staffId: number;
   role: UserRole;
   weeklyLeadGoal?: number | null;
@@ -69,6 +73,8 @@ export const UpdateUserBodyRole = {
 
 export interface UpdateUserBody {
   email?: string;
+  fullName?: string;
+  phone?: string;
   password?: string;
   staffId?: number;
   role?: UpdateUserBodyRole;

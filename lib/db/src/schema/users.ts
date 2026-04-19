@@ -8,6 +8,8 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   staffId: integer("staff_id").notNull(),
   role: text("role", { enum: ["superadmin", "admin", "sales", "data-entry"] }).notNull().default("sales"),
+  fullName: text("full_name"),
+  phone: text("phone"),
   weeklyLeadGoal: integer("weekly_lead_goal"),
   mustChangePassword: boolean("must_change_password").notNull().default(false),
   isLocked: boolean("is_locked").notNull().default(false),
