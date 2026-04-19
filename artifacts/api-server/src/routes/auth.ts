@@ -68,6 +68,7 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
     email: user.email,
     staffId: user.staffId,
     role: user.role,
+    mustChangePassword: user.mustChangePassword,
     createdAt: user.createdAt,
   });
 });
@@ -98,7 +99,9 @@ router.post("/auth/change-password", requireAuth, async (req, res): Promise<void
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, req.user!.userId));
+  await db.update(usersTable)
+    .set({ passwordHash, mustChangePassword: false })
+    .where(eq(usersTable.id, req.user!.userId));
 
   res.json({ message: "Password updated successfully" });
 });

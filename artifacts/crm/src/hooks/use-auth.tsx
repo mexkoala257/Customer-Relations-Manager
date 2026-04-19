@@ -8,6 +8,7 @@ interface AuthContextType {
   userRole: string | null;
   userEmail: string | null;
   staffId: number | null;
+  mustChangePassword: boolean;
   logout: () => void;
   isLoading: boolean;
 }
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   userRole: null,
   userEmail: null,
   staffId: null,
+  mustChangePassword: false,
   logout: () => {},
   isLoading: true,
 });
@@ -49,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userRole: user?.role ?? null,
         userEmail: user?.email ?? null,
         staffId: user?.staffId ?? null,
+        mustChangePassword: user?.mustChangePassword ?? false,
         logout,
         isLoading: !!token && isLoading,
       }}

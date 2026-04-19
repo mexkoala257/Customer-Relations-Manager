@@ -42,6 +42,7 @@ router.post("/users", requireAdmin, async (req, res): Promise<void> => {
     passwordHash,
     staffId,
     role,
+    mustChangePassword: true,
   }).returning({
     id: usersTable.id,
     email: usersTable.email,

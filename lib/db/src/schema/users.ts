@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
   staffId: integer("staff_id").notNull(),
   role: text("role", { enum: ["superadmin", "admin", "sales", "data-entry"] }).notNull().default("sales"),
   weeklyLeadGoal: integer("weekly_lead_goal"),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

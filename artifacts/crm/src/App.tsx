@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { getToken } from "@/lib/api";
 import { AppSettingsProvider } from "@/contexts/app-settings";
 import { BrandingEditor } from "@/components/branding-editor";
+import { ForcePasswordModal } from "@/components/force-password-modal";
 import { useEffect, useState } from "react";
 
 import LoginPage from "@/pages/login";
@@ -95,10 +96,11 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AppRouter() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, mustChangePassword } = useAuth();
 
   return (
     <SetupGuard>
+      {isAuthenticated && mustChangePassword && <ForcePasswordModal />}
       <Switch>
         <Route path="/setup" component={SetupPage} />
 
