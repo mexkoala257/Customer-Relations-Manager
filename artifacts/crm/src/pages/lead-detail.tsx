@@ -71,6 +71,9 @@ export default function LeadDetailPage({ id }: { id: string }) {
           variant: "success",
           duration: 2000,
         });
+        if (lead?.customerId) {
+          navigate(`/customers/${lead.customerId}`);
+        }
       },
       onError: () => {
         toast({ title: "Failed to update lead", variant: "destructive" });
