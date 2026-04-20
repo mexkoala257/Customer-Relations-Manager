@@ -11,7 +11,7 @@ const ACCENT_HEX: Record<string, { bg: string; text: string }> = {
   teal:   { bg: "#14b8a6", text: "#ffffff" },
 };
 
-async function getAllSettings(): Promise<Record<string, string>> {
+export async function getAllSettings(): Promise<Record<string, string>> {
   try {
     const rows = await db.select().from(appSettingsTable);
     const map: Record<string, string> = {};
@@ -24,7 +24,7 @@ async function getAllSettings(): Promise<Record<string, string>> {
   }
 }
 
-function getEmailBranding(settings: Record<string, string>) {
+export function getEmailBranding(settings: Record<string, string>) {
   const companyName = settings["company_name"] || "SalesCRM";
   const accentKey = settings["accent_color"] || "amber";
   const colors = ACCENT_HEX[accentKey] ?? ACCENT_HEX["amber"];
@@ -46,7 +46,7 @@ function emailFooter(companyName: string) {
     </div>`;
 }
 
-async function createTransporter() {
+export async function createTransporter() {
   const dbSettings = await getAllSettings();
 
   const host = dbSettings["smtp_host"] || process.env.SMTP_HOST;

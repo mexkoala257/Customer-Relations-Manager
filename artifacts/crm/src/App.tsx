@@ -27,6 +27,9 @@ import SettingsPage from "@/pages/settings";
 import MyRemindersPage from "@/pages/my-reminders";
 import GuidePage from "@/pages/guide";
 import TeamPage from "@/pages/team";
+import QuotesPage from "@/pages/quotes";
+import QuoteBuilderPage from "@/pages/quote-builder";
+import AdminProductsPage from "@/pages/admin-products";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -155,6 +158,22 @@ function AppRouter() {
 
         <Route path="/admin/reports">
           <ProtectedRoute component={AdminReportsPage} adminOnly />
+        </Route>
+
+        <Route path="/admin/products">
+          <ProtectedRoute component={AdminProductsPage} adminOnly />
+        </Route>
+
+        <Route path="/quotes/new">
+          <ProtectedRoute component={QuoteBuilderPage} />
+        </Route>
+
+        <Route path="/quotes/:id">
+          {(params) => <ProtectedRoute component={QuoteBuilderPage} id={params.id} />}
+        </Route>
+
+        <Route path="/quotes">
+          <ProtectedRoute component={QuotesPage} />
         </Route>
 
         <Route path="/settings">

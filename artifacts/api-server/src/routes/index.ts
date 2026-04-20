@@ -11,6 +11,8 @@ import settingsRouter from "./settings";
 import setupRouter from "./setup";
 import exportRouter from "./export";
 import userReminderPrefsRouter from "./user-reminder-prefs";
+import productsRouter from "./products";
+import quotesRouter from "./quotes";
 
 const router: IRouter = Router();
 
@@ -26,5 +28,7 @@ router.use(teamRouter);
 router.use(settingsRouter);
 router.use(exportRouter);
 router.use(userReminderPrefsRouter);
+router.use(productsRouter);
+router.use(quotesRouter);
 
 export default router;
