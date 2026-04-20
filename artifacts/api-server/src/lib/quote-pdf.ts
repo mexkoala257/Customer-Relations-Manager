@@ -44,16 +44,28 @@ function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
+function isSupportedImageBuffer(buf: Buffer): boolean {
+  if (buf.length < 4) return false;
+  const isPng = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+  const isJpeg = buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  return isPng || isJpeg;
+}
+
 async function fetchLogoBuffer(logoUrl: string): Promise<Buffer | null> {
   try {
+    let buf: Buffer;
     if (logoUrl.startsWith("data:")) {
+      const mime = logoUrl.split(";")[0].split(":")[1] ?? "";
+      if (!mime.includes("png") && !mime.includes("jpeg") && !mime.includes("jpg")) return null;
       const base64 = logoUrl.split(",")[1];
       if (!base64) return null;
-      return Buffer.from(base64, "base64");
+      buf = Buffer.from(base64, "base64");
+    } else {
+      const res = await fetch(logoUrl);
+      if (!res.ok) return null;
+      buf = Buffer.from(await res.arrayBuffer());
     }
-    const res = await fetch(logoUrl);
-    if (!res.ok) return null;
-    return Buffer.from(await res.arrayBuffer());
+    return isSupportedImageBuffer(buf) ? buf : null;
   } catch {
     return null;
   }
@@ -99,15 +111,22 @@ export async function generateQuotePdf(data: QuotePdfData): Promise<Buffer> {
     doc.rect(0, 0, W, 72).fill(darkBg);
 
     // Logo (if available) — white rounded-square background so any colour logo looks clean
+    let logoRendered = false;
     if (logoBuffer) {
-      doc.roundedRect(ML, 14, LOGO_SIZE, LOGO_SIZE, 6).fill("#ffffff");
-      doc.image(logoBuffer, ML + 4, 18, { width: LOGO_SIZE - 8, height: LOGO_SIZE - 8, fit: [LOGO_SIZE - 8, LOGO_SIZE - 8] });
+      try {
+        doc.roundedRect(ML, 14, LOGO_SIZE, LOGO_SIZE, 6).fill("#ffffff");
+        doc.image(logoBuffer, ML + 4, 18, { width: LOGO_SIZE - 8, height: LOGO_SIZE - 8, fit: [LOGO_SIZE - 8, LOGO_SIZE - 8] });
+        logoRendered = true;
+      } catch {
+        // Unsupported image format — skip logo, fall back to text-only header
+      }
     }
+    const effectiveTextX = logoRendered ? textX : ML;
 
     doc.fontSize(20).font("Helvetica-Bold").fillColor(accentBg)
-      .text(companyName, textX, 18);
+      .text(companyName, effectiveTextX, 18);
     doc.fontSize(9).font("Helvetica").fillColor("#94a3b8")
-      .text("SALES QUOTATION", textX, 43, { characterSpacing: 2 });
+      .text("SALES QUOTATION", effectiveTextX, 43, { characterSpacing: 2 });
 
     // Quote number / date block
     const qDate = data.createdAt instanceof Date
