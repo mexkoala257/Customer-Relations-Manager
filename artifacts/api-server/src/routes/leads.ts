@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, leadsTable, customersTable, usersTable } from "@workspace/db";
-import { eq, and, desc, sql, ne, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, sql, ne, inArray } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { sendFollowUpEmail } from "../lib/mailer";
 import {
@@ -110,7 +110,7 @@ async function findRepWithFewestLeadsThisWeek(): Promise<string | null> {
 
 router.get("/leads", requireAuth, async (req, res): Promise<void> => {
   const qp = ListLeadsQueryParams.safeParse(req.query);
-  const { status, userId, followUpToday, followUpThisWeek } = qp.success ? qp.data : {};
+  const { status, userId, followUpToday, followUpThisWeek, pastDue } = qp.success ? qp.data : {};
 
   const role = req.user!.role;
   const isAdmin = role === "admin" || role === "superadmin";
@@ -154,13 +154,23 @@ router.get("/leads", requireAuth, async (req, res): Promise<void> => {
     );
   }
 
+  if (pastDue === "true") {
+    const todayStr = new Date().toISOString().split("T")[0];
+    conditions.push(
+      and(
+        sql`${leadsTable.followUpDate} IS NOT NULL`,
+        sql`${leadsTable.followUpDate} < ${todayStr}`
+      )!
+    );
+  }
+
   const leads = await db
     .select(buildLeadSelect())
     .from(leadsTable)
     .leftJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
     .leftJoin(usersTable, eq(leadsTable.userId, usersTable.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(leadsTable.createdAt));
+    .orderBy(pastDue === "true" ? asc(leadsTable.followUpDate) : desc(leadsTable.createdAt));
 
   res.json(leads);
 });

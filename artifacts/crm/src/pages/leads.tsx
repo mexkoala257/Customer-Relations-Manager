@@ -25,13 +25,14 @@ import {
   List,
   AlertCircle,
   UserCog,
+  Clock,
 } from "lucide-react";
 
 import { LEAD_STATUSES, STATUS_BADGE } from "@/lib/lead-status";
 
 const STATUS_OPTIONS = ["", ...LEAD_STATUSES];
 
-type ViewMode = "all" | "this-week";
+type ViewMode = "all" | "this-week" | "past-due";
 
 /* ── Inline status selector ────────────────────────────────────────────── */
 function InlineStatusSelect({
@@ -277,8 +278,9 @@ export default function LeadsPage() {
 
   const allParams = statusFilter ? { status: statusFilter } : {};
   const weekParams = { followUpThisWeek: "true" };
+  const pastDueParams = { pastDue: "true" };
 
-  const params = viewMode === "this-week" ? weekParams : allParams;
+  const params = viewMode === "this-week" ? weekParams : viewMode === "past-due" ? pastDueParams : allParams;
   const { data: leads, isLoading } = useListLeads(params as Parameters<typeof useListLeads>[0], {
     query: { queryKey: getListLeadsQueryKey(params as Parameters<typeof useListLeads>[0]) },
   });
@@ -323,6 +325,13 @@ export default function LeadsPage() {
 
   const weekGroups = viewMode === "this-week" ? groupByFollowUpDay(leads ?? []) : [];
 
+  const headerSubtitle =
+    viewMode === "this-week"
+      ? `${leads?.length ?? 0} follow-ups this week`
+      : viewMode === "past-due"
+      ? `${leads?.length ?? 0} overdue follow-ups`
+      : `${leads?.length ?? 0} total records`;
+
   /* ── Get current week range label ── */
   const today = new Date();
   const dayOfWeek = today.getDay();
@@ -343,7 +352,7 @@ export default function LeadsPage() {
               {canSeeAll ? "All Leads" : "My Leads"}
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {leads?.length ?? 0} {viewMode === "this-week" ? "follow-ups this week" : "total records"}
+              {headerSubtitle}
             </p>
           </div>
           <Link
@@ -357,7 +366,7 @@ export default function LeadsPage() {
         </div>
 
         {/* View mode toggle */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
           <button
             onClick={() => setViewMode("all")}
             className={cn(
@@ -384,6 +393,22 @@ export default function LeadsPage() {
             This Week
             {viewMode !== "this-week" && (
               <span className="ml-1 text-xs opacity-70">{weekLabel}</span>
+            )}
+          </button>
+          <button
+            onClick={() => { setViewMode("past-due"); setStatusFilter(""); }}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
+              viewMode === "past-due"
+                ? "bg-destructive text-destructive-foreground border-destructive shadow-sm"
+                : "bg-card border-card-border text-muted-foreground hover:bg-muted"
+            )}
+            data-testid="filter-past-due"
+          >
+            <Clock className="w-4 h-4" />
+            Past Due
+            {leads && viewMode !== "past-due" && (
+              <span className="ml-1 text-xs opacity-70" />
             )}
           </button>
           {viewMode === "this-week" && (
@@ -516,6 +541,115 @@ export default function LeadsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )
+        ) : viewMode === "past-due" ? (
+          /* ── PAST DUE VIEW ── */
+          (leads ?? []).length === 0 ? (
+            <div className="text-center py-16 bg-card border border-card-border rounded-xl">
+              <Clock className="w-10 h-10 mx-auto text-muted-foreground/40 mb-3" />
+              <div className="text-muted-foreground text-sm font-medium">No past-due leads</div>
+              <p className="text-xs text-muted-foreground/60 mt-1">All follow-ups are on schedule</p>
+            </div>
+          ) : (
+            <div className="bg-card border border-destructive/30 rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 bg-destructive/5 border-b border-destructive/20 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive" />
+                <span className="text-xs font-semibold text-destructive uppercase tracking-wider">
+                  Overdue Follow-ups — oldest first
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" data-testid="past-due-table">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Due Date</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Days Overdue</th>
+                      {canSeeAll && (
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rep</th>
+                      )}
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notes</th>
+                      <th className="px-4 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {(leads ?? []).map((lead) => {
+                      const mapsUrl = buildMapsUrl(lead);
+                      const daysOverdue = lead.followUpDate
+                        ? Math.floor((Date.now() - new Date(lead.followUpDate + "T00:00:00").getTime()) / 86_400_000)
+                        : 0;
+                      return (
+                        <tr
+                          key={lead.id}
+                          className="hover:bg-destructive/5 transition-colors"
+                          data-testid={`lead-row-${lead.id}`}
+                        >
+                          <td className="px-4 py-3.5">
+                            <Link
+                              href={`/customers/${lead.customerId}`}
+                              className="font-medium text-foreground hover:text-primary transition truncate max-w-[160px] block"
+                            >
+                              {lead.customer?.companyName}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3.5 text-muted-foreground">
+                            {lead.customer?.contactName}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <InlineStatusSelect
+                              leadId={lead.id}
+                              currentStatus={lead.status}
+                              onUpdated={refreshLeads}
+                            />
+                          </td>
+                          <td className="px-4 py-3.5 tabular-nums">
+                            <span className="text-destructive font-medium">
+                              {formatDate(lead.followUpDate)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
+                              <AlertCircle className="w-3 h-3" />
+                              {daysOverdue}d
+                            </span>
+                          </td>
+                          {canSeeAll && (
+                            <td className="px-4 py-3.5">
+                              {isAdmin ? (
+                                <InlineRepSelect
+                                  leadId={lead.id}
+                                  currentRepId={lead.userId ?? ""}
+                                  users={allUsers ?? []}
+                                  onUpdated={refreshLeads}
+                                />
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  {lead.user?.email ?? "—"}
+                                </span>
+                              )}
+                            </td>
+                          )}
+                          <td className="px-4 py-3.5 text-muted-foreground max-w-[200px]">
+                            <span className="truncate block">{lead.notes || "—"}</span>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <RowActions
+                              lead={lead}
+                              mapsUrl={mapsUrl}
+                              onFollowup={() => followupMutation.mutate({ id: lead.id })}
+                              onDelete={() => handleDelete(lead.id)}
+                              canDelete={!isDataEntry}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )
         ) : (
