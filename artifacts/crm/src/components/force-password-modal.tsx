@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { customFetch } from "@workspace/api-client-react";
+import { getToken } from "@/lib/api";
 import { KeyRound, Eye, EyeOff, ShieldAlert } from "lucide-react";
 
 export function ForcePasswordModal() {
@@ -33,15 +33,19 @@ export function ForcePasswordModal() {
 
     setLoading(true);
     try {
-      const res = await customFetch("/api/auth/change-password", {
+      const token = getToken();
+      const res = await fetch("/api/auth/change-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ currentPassword: current, newPassword: next }),
       });
 
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError((data as any).error ?? "Failed to update password.");
+        setError((data as { error?: string }).error ?? "Failed to update password.");
         return;
       }
 
