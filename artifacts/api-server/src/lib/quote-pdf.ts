@@ -44,11 +44,28 @@ function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
+async function fetchLogoBuffer(logoUrl: string): Promise<Buffer | null> {
+  try {
+    if (logoUrl.startsWith("data:")) {
+      const base64 = logoUrl.split(",")[1];
+      if (!base64) return null;
+      return Buffer.from(base64, "base64");
+    }
+    const res = await fetch(logoUrl);
+    if (!res.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 export async function generateQuotePdf(data: QuotePdfData): Promise<Buffer> {
   const settings = await getAllSettings();
   const { companyName, accentBg, accentText } = getEmailBranding(settings);
 
-  const [ar, ag, ab] = hexToRgb(accentBg);
+  const logoUrl: string = settings["logo_url"] ?? "";
+  const logoBuffer = logoUrl ? await fetchLogoBuffer(logoUrl) : null;
+
   const darkBg = "#0f172a";
   const mid = "#334155";
   const light = "#64748b";
@@ -59,6 +76,10 @@ export async function generateQuotePdf(data: QuotePdfData): Promise<Buffer> {
   const ML = 48;
   const MR = 48;
   const CW = W - ML - MR;
+
+  const LOGO_SIZE = 44;
+  const LOGO_GAP = 12;
+  const textX = logoBuffer ? ML + LOGO_SIZE + LOGO_GAP : ML;
 
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -76,13 +97,22 @@ export async function generateQuotePdf(data: QuotePdfData): Promise<Buffer> {
 
     // ── Header bar ─────────────────────────────────────────────────────
     doc.rect(0, 0, W, 72).fill(darkBg);
+
+    // Logo (if available) — white rounded-square background so any colour logo looks clean
+    if (logoBuffer) {
+      doc.roundedRect(ML, 14, LOGO_SIZE, LOGO_SIZE, 6).fill("#ffffff");
+      doc.image(logoBuffer, ML + 4, 18, { width: LOGO_SIZE - 8, height: LOGO_SIZE - 8, fit: [LOGO_SIZE - 8, LOGO_SIZE - 8] });
+    }
+
     doc.fontSize(20).font("Helvetica-Bold").fillColor(accentBg)
-      .text(companyName, ML, 18);
+      .text(companyName, textX, 18);
     doc.fontSize(9).font("Helvetica").fillColor("#94a3b8")
-      .text("SALES QUOTATION", ML, 43, { characterSpacing: 2 });
+      .text("SALES QUOTATION", textX, 43, { characterSpacing: 2 });
 
     // Quote number / date block
-    const qDate = data.createdAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    const qDate = data.createdAt instanceof Date
+      ? data.createdAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+      : new Date(data.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
     doc.fontSize(9).font("Helvetica-Bold").fillColor("#94a3b8")
       .text("QUOTE #", W - MR - 130, 18, { width: 130, align: "right" });
     doc.fontSize(10).font("Helvetica-Bold").fillColor(accentBg)
