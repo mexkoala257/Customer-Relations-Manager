@@ -2,7 +2,16 @@ import nodemailer from "nodemailer";
 import { logger } from "./logger";
 import { db, appSettingsTable } from "@workspace/db";
 
-async function getSmtpSettings(): Promise<Record<string, string>> {
+const ACCENT_HEX: Record<string, { bg: string; text: string }> = {
+  amber:  { bg: "#f59e0b", text: "#1c1917" },
+  blue:   { bg: "#3b82f6", text: "#ffffff" },
+  green:  { bg: "#22c55e", text: "#ffffff" },
+  purple: { bg: "#a855f7", text: "#ffffff" },
+  rose:   { bg: "#f43f5e", text: "#ffffff" },
+  teal:   { bg: "#14b8a6", text: "#ffffff" },
+};
+
+async function getAllSettings(): Promise<Record<string, string>> {
   try {
     const rows = await db.select().from(appSettingsTable);
     const map: Record<string, string> = {};
@@ -15,8 +24,30 @@ async function getSmtpSettings(): Promise<Record<string, string>> {
   }
 }
 
+function getEmailBranding(settings: Record<string, string>) {
+  const companyName = settings["company_name"] || "SalesCRM";
+  const accentKey = settings["accent_color"] || "amber";
+  const colors = ACCENT_HEX[accentKey] ?? ACCENT_HEX["amber"];
+  return { companyName, accentBg: colors.bg, accentText: colors.text };
+}
+
+function emailHeader(companyName: string, accentBg: string, accentText: string, subtitle?: string) {
+  return `
+    <div style="background:${accentBg};padding:20px 24px;border-radius:8px 8px 0 0">
+      <h2 style="color:${accentText};margin:0;font-size:18px;font-weight:700;letter-spacing:-0.3px">${companyName}</h2>
+      ${subtitle ? `<p style="color:${accentText};opacity:0.8;margin:4px 0 0;font-size:13px">${subtitle}</p>` : ""}
+    </div>`;
+}
+
+function emailFooter(companyName: string) {
+  return `
+    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-top:0;padding:12px 24px;border-radius:0 0 8px 8px">
+      <p style="margin:0;font-size:12px;color:#9ca3af">Automated message from ${companyName}.</p>
+    </div>`;
+}
+
 async function createTransporter() {
-  const dbSettings = await getSmtpSettings();
+  const dbSettings = await getAllSettings();
 
   const host = dbSettings["smtp_host"] || process.env.SMTP_HOST;
   const user = dbSettings["smtp_user"] || process.env.SMTP_USER;
@@ -26,14 +57,14 @@ async function createTransporter() {
 
   if (!host || !user || !pass) {
     logger.warn("SMTP credentials not configured — emails will be logged only");
-    return { transporter: null, from: null };
+    return { transporter: null, from: null, settings: dbSettings };
   }
 
   const fromName = dbSettings["smtp_from_name"] || dbSettings["company_name"] || "SalesCRM";
   const from = `"${fromName}" <${user}>`;
 
   const transporter = nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
-  return { transporter, from };
+  return { transporter, from, settings: dbSettings };
 }
 
 async function deliver(to: string, subject: string, html: string, text: string): Promise<{ sent: boolean; message: string }> {
@@ -54,8 +85,25 @@ export async function sendFollowUpEmail(opts: {
   notes: string | null;
   followUpDate: string | null;
 }): Promise<{ sent: boolean; message: string }> {
+  const settings = await getAllSettings();
+  const { companyName: brandName, accentBg, accentText } = getEmailBranding(settings);
+
   const text = `Hi ${opts.toName},\n\nThis is a follow-up from your sales rep ${opts.repName} regarding ${opts.companyName}.\n\n${opts.notes ? `Notes: ${opts.notes}` : ""}${opts.followUpDate ? `\nScheduled Follow-Up Date: ${opts.followUpDate}` : ""}\n\nThank you for your time.`.trim();
-  return deliver(opts.toEmail, `Follow-up: ${opts.companyName}`, `<p>${text.replace(/\n/g, "<br>")}</p>`, text);
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1f2937">
+      ${emailHeader(brandName, accentBg, accentText)}
+      <div style="background:#fff;border:1px solid #e5e7eb;padding:24px">
+        <p style="margin:0 0 12px">Hi <strong>${opts.toName}</strong>,</p>
+        <p style="margin:0 0 12px">This is a follow-up from your sales rep <strong>${opts.repName}</strong> regarding <strong>${opts.companyName}</strong>.</p>
+        ${opts.notes ? `<p style="margin:0 0 12px;color:#374151"><strong>Notes:</strong> ${opts.notes}</p>` : ""}
+        ${opts.followUpDate ? `<p style="margin:0 0 12px;color:#374151"><strong>Scheduled Follow-Up:</strong> ${opts.followUpDate}</p>` : ""}
+        <p style="margin:16px 0 0;color:#6b7280;font-size:13px">Thank you for your time.</p>
+      </div>
+      ${emailFooter(brandName)}
+    </div>`;
+
+  return deliver(opts.toEmail, `Follow-up: ${opts.companyName}`, html, text);
 }
 
 export async function sendFollowUpReminderEmail(opts: {
@@ -63,7 +111,10 @@ export async function sendFollowUpReminderEmail(opts: {
   repName: string;
   leads: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; notes: string | null }>;
 }): Promise<{ sent: boolean; message: string }> {
-  const subject = `SalesCRM — You have ${opts.leads.length} follow-up${opts.leads.length === 1 ? "" : "s"} coming up`;
+  const settings = await getAllSettings();
+  const { companyName, accentBg, accentText } = getEmailBranding(settings);
+
+  const subject = `${companyName} — You have ${opts.leads.length} follow-up${opts.leads.length === 1 ? "" : "s"} coming up`;
 
   const rows = opts.leads.map((l) =>
     `<tr style="border-bottom:1px solid #e5e7eb">
@@ -76,9 +127,7 @@ export async function sendFollowUpReminderEmail(opts: {
 
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1f2937">
-      <div style="background:#0f172a;padding:20px 24px;border-radius:8px 8px 0 0">
-        <h2 style="color:#f59e0b;margin:0;font-size:18px">⚡ SalesCRM</h2>
-      </div>
+      ${emailHeader(companyName, accentBg, accentText)}
       <div style="background:#fff;border:1px solid #e5e7eb;padding:24px">
         <p style="margin:0 0 16px">Hi <strong>${opts.repName}</strong>, you have upcoming follow-ups that need attention:</p>
         <table style="width:100%;border-collapse:collapse;font-size:14px">
@@ -93,9 +142,7 @@ export async function sendFollowUpReminderEmail(opts: {
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-top:0;padding:12px 24px;border-radius:0 0 8px 8px">
-        <p style="margin:0;font-size:12px;color:#9ca3af">This is an automated reminder from SalesCRM.</p>
-      </div>
+      ${emailFooter(companyName)}
     </div>`;
 
   const text = `Hi ${opts.repName},\n\nYou have ${opts.leads.length} upcoming follow-up(s):\n\n` +
@@ -109,7 +156,10 @@ export async function sendPastDueReminderEmail(opts: {
   repName: string;
   leads: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; notes: string | null }>;
 }): Promise<{ sent: boolean; message: string }> {
-  const subject = `SalesCRM — ${opts.leads.length} overdue follow-up${opts.leads.length === 1 ? "" : "s"} need your attention`;
+  const settings = await getAllSettings();
+  const { companyName, accentBg, accentText } = getEmailBranding(settings);
+
+  const subject = `${companyName} — ${opts.leads.length} overdue follow-up${opts.leads.length === 1 ? "" : "s"} need your attention`;
 
   const rows = opts.leads.map((l) => {
     const daysAgo = Math.round((Date.now() - new Date(l.followUpDate).getTime()) / 86400000);
@@ -125,10 +175,7 @@ export async function sendPastDueReminderEmail(opts: {
 
   const html = `
     <div style="font-family:sans-serif;max-width:640px;margin:0 auto;color:#1f2937">
-      <div style="background:#0f172a;padding:20px 24px;border-radius:8px 8px 0 0">
-        <h2 style="color:#f59e0b;margin:0;font-size:18px">⚡ SalesCRM</h2>
-        <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">Daily Past-Due Alert</p>
-      </div>
+      ${emailHeader(companyName, accentBg, accentText, "Daily Past-Due Alert")}
       <div style="background:#fff;border:1px solid #e5e7eb;padding:24px">
         <p style="margin:0 0 8px">Hi <strong>${opts.repName}</strong>,</p>
         <p style="margin:0 0 16px;color:#dc2626;font-weight:600">You have ${opts.leads.length} overdue follow-up${opts.leads.length === 1 ? "" : "s"} that require immediate attention:</p>
@@ -145,14 +192,12 @@ export async function sendPastDueReminderEmail(opts: {
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-top:0;padding:12px 24px;border-radius:0 0 8px 8px">
-        <p style="margin:0;font-size:12px;color:#9ca3af">Automated daily past-due alert from SalesCRM. Log in to update your leads.</p>
-      </div>
+      ${emailFooter(companyName)}
     </div>`;
 
   const text = `Hi ${opts.repName},\n\nYou have ${opts.leads.length} overdue follow-up(s):\n\n` +
     opts.leads.map((l) => `• ${l.companyName} (${l.contactName}) — was due ${l.followUpDate} [${l.status}]`).join("\n") +
-    `\n\nPlease log in to SalesCRM to update these leads.`;
+    `\n\nPlease log in to update these leads.`;
 
   return deliver(opts.toEmail, subject, html, text);
 }
@@ -164,7 +209,10 @@ export async function sendSummaryEmail(opts: {
   recentLeads: Array<{ companyName: string; contactName: string; status: string; repEmail: string; updatedAt: string }>;
   upcomingLeads: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string }>;
 }): Promise<{ sent: boolean; message: string }> {
-  const subject = `SalesCRM — ${opts.periodLabel} Activity Summary`;
+  const settings = await getAllSettings();
+  const { companyName, accentBg, accentText } = getEmailBranding(settings);
+
+  const subject = `${companyName} — ${opts.periodLabel} Activity Summary`;
 
   function mkRow(cells: string[]) {
     return `<tr style="border-bottom:1px solid #e5e7eb">${cells.map((c) => `<td style="padding:9px 12px;font-size:13px">${c}</td>`).join("")}</tr>`;
@@ -199,22 +247,17 @@ export async function sendSummaryEmail(opts: {
 
   const html = `
     <div style="font-family:sans-serif;max-width:640px;margin:0 auto;color:#1f2937">
-      <div style="background:#0f172a;padding:20px 24px;border-radius:8px 8px 0 0">
-        <h2 style="color:#f59e0b;margin:0;font-size:18px">⚡ SalesCRM</h2>
-        <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">${opts.periodLabel} Activity Summary</p>
-      </div>
+      ${emailHeader(companyName, accentBg, accentText, `${opts.periodLabel} Activity Summary`)}
       <div style="background:#fff;border:1px solid #e5e7eb;padding:24px">
         <p style="margin:0 0 4px">Hi <strong>${opts.recipientName}</strong>,</p>
         <p style="margin:0 0 16px;color:#6b7280;font-size:13px">Here's your sales activity overview.</p>
         ${recentSection}
         ${upcomingSection}
       </div>
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-top:0;padding:12px 24px;border-radius:0 0 8px 8px">
-        <p style="margin:0;font-size:12px;color:#9ca3af">Automated ${opts.periodLabel.toLowerCase()} summary from SalesCRM.</p>
-      </div>
+      ${emailFooter(companyName)}
     </div>`;
 
-  const text = `SalesCRM ${opts.periodLabel} Summary for ${opts.recipientName}\n\n` +
+  const text = `${companyName} ${opts.periodLabel} Summary for ${opts.recipientName}\n\n` +
     `Recent Activity:\n${opts.recentLeads.map((l) => `• ${l.companyName} — ${l.status} (${l.repEmail})`).join("\n") || "None"}\n\n` +
     `Upcoming Follow-ups:\n${opts.upcomingLeads.map((l) => `• ${l.companyName} — ${l.followUpDate} (${l.repEmail})`).join("\n") || "None"}`;
 
