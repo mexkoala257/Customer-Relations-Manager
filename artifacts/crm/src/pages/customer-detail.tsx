@@ -15,7 +15,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X, StickyNote, Trash2, PlusCircle, UserRound, FileText, Plus } from "lucide-react";
+import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X, StickyNote, Trash2, PlusCircle, UserRound } from "lucide-react";
 import { LEAD_STATUSES } from "@/lib/lead-status";
 
 interface AccountNote {
@@ -39,22 +39,6 @@ export default function CustomerDetailPage({ id }: { id: string }) {
   const { data: notes = [], isLoading: notesLoading } = useQuery<AccountNote[]>({
     queryKey: notesQueryKey,
     queryFn: () => customFetch<AccountNote[]>(`/api/customers/${id}/notes`),
-    enabled: !!id,
-  });
-
-  interface CustomerQuote {
-    id: string;
-    title: string;
-    status: string;
-    total: string;
-    sentAt: string | null;
-    createdAt: string;
-    userId: string;
-    repEmail: string;
-  }
-  const { data: customerQuotes = [] } = useQuery<CustomerQuote[]>({
-    queryKey: ["customer-quotes", id],
-    queryFn: () => customFetch<CustomerQuote[]>(`/api/quotes/customer/${id}`),
     enabled: !!id,
   });
 
@@ -560,62 +544,6 @@ export default function CustomerDetailPage({ id }: { id: string }) {
                 )}
               </div>
             </>
-          )}
-        </div>
-
-        {/* Quotes */}
-        <div className="bg-card border border-card-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-muted-foreground" />
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Quotes
-              </h2>
-            </div>
-            <Link
-              href={`/quotes/new?customerId=${id}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:opacity-90 transition"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              New Quote
-            </Link>
-          </div>
-          {customerQuotes.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No quotes yet.{" "}
-              <Link href={`/quotes/new?customerId=${id}`} className="text-primary underline">
-                Create one
-              </Link>
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {customerQuotes.map((q) => (
-                <Link
-                  key={q.id}
-                  href={`/quotes/${q.id}`}
-                  className="flex items-center justify-between p-3 rounded-xl border border-border hover:bg-muted/40 transition">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{q.title}</div>
-                        <div className="text-xs text-muted-foreground">{new Date(q.createdAt).toLocaleDateString()}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className={cn(
-                        "px-2 py-0.5 rounded-full text-xs font-medium capitalize",
-                        q.status === "draft" && "bg-muted text-muted-foreground",
-                        q.status === "sent" && "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-                        q.status === "accepted" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-                        q.status === "declined" && "bg-destructive/10 text-destructive",
-                      )}>
-                        {q.status}
-                      </span>
-                      <span className="font-semibold text-sm">${Number(q.total).toFixed(2)}</span>
-                    </div>
-                </Link>
-              ))}
-            </div>
           )}
         </div>
 

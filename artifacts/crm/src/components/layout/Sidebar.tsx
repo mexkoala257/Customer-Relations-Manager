@@ -16,14 +16,12 @@ import {
   MessageSquare,
   SlidersHorizontal,
   BookOpen,
-  Package,
 } from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "My Leads", icon: TrendingUp, href: "/leads" },
   { label: "Customers", icon: Building2, href: "/customers" },
-  { label: "Quotes", icon: FileText, href: "/quotes" },
   { label: "Messages", icon: MessageSquare, href: "/team" },
   { label: "Reminders", icon: Bell, href: "/reminders" },
   { label: "Settings", icon: Settings, href: "/settings" },
@@ -34,7 +32,6 @@ const adminItems = [
   { label: "Manage Users", icon: Users, href: "/admin/users" },
   { label: "Reminders", icon: Bell, href: "/admin/reminders" },
   { label: "Reports", icon: FileText, href: "/admin/reports" },
-  { label: "Products", icon: Package, href: "/admin/products" },
 ];
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {

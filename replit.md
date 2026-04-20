@@ -49,7 +49,6 @@ A full-stack Sales CRM with:
 - **Reports page** (`/admin/reports`, admin-only): print-ready report with "Leads by Sales Rep", "Overdue Activity", and "New Activity (last 7 days)" sections; print/save-as-PDF via `window.print()` with `@media print` CSS
 - Dashboard with stats cards and lead status pie chart
 - **Team Portal** (`/team`, all users): 4-tab collaboration hub — Messages (threaded posts), Quick Updates (Notice/Urgent/Critical badges), Photos (gallery with lightbox), Documents (PDF upload & download); stored in PostgreSQL (`team_messages`, `team_updates`, `team_photos`, `team_documents`); delete restricted to owner or admin; 20mb JSON body limit for base64 uploads
-- **Quote Creation System** (`/quotes`, all users; `/admin/products`, admin-only): Product catalog (admin-managed with SKU/category/price), Quote builder (customer picker, line items with catalog search, tax rate, totals), Quote list with status tracking (draft/sent/accepted/declined), PDF generation via pdfkit (branded with company name + accent color), Email delivery with PDF attachment, Customer profile Quotes section with "New Quote" shortcut; tables: `products`, `quotes`, `quote_items`; pdfkit marked external in esbuild config to avoid fontkit bundling issues
 
 ### Demo Credentials
 - Admin: `admin@crm.com` / `admin123`

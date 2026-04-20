@@ -21,7 +21,6 @@
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.5",
-    "pdfkit": "^0.15.0",
     "pino": "^9",
     "pino-http": "^10"
   },
