@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   useListUsers,
   useCreateUser,
@@ -10,8 +10,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { PlusCircle, Trash2, Loader2, X, KeyRound, Eye, EyeOff, LockKeyhole, LockKeyholeOpen, Pencil } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, X, KeyRound, Eye, EyeOff, LockKeyhole, LockKeyholeOpen, Pencil, Mail } from "lucide-react";
 import { useLocation } from "wouter";
+import { getToken } from "@/lib/api";
 
 function GoalInput({ userId, currentGoal }: { userId: string; currentGoal: number | null | undefined }) {
   const [value, setValue] = useState<string>(currentGoal != null ? String(currentGoal) : "");
@@ -261,6 +262,91 @@ function ResetPasswordModal({ userId, userEmail, onClose }: ResetPasswordModalPr
   );
 }
 
+type EmailType = "followup" | "pastdue" | "summary";
+
+const EMAIL_OPTIONS: { type: EmailType; label: string; description: string }[] = [
+  { type: "followup", label: "Follow-up Reminder", description: "Upcoming follow-ups (next 30 days)" },
+  { type: "pastdue", label: "Past-Due Alert",       description: "Overdue follow-ups" },
+  { type: "summary", label: "Activity Summary",     description: "Team overview email" },
+];
+
+function SendEmailMenu({ userId, userEmail }: { userId: string; userEmail: string }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [sending, setSending] = useState<EmailType | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [open]);
+
+  async function send(type: EmailType) {
+    setSending(type);
+    setOpen(false);
+    try {
+      const token = getToken();
+      const endpointMap: Record<EmailType, string> = {
+        followup: `/api/admin/reminders/send-followup-user/${userId}`,
+        pastdue:  `/api/admin/reminders/send-pastdue-user/${userId}`,
+        summary:  `/api/admin/reminders/send-summary-user/${userId}`,
+      };
+      const res = await fetch(endpointMap[type], {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Request failed");
+      if (data.sent) {
+        toast({ title: `Email sent to ${userEmail}`, description: data.message });
+      } else {
+        toast({ title: `Email not sent`, description: data.message, variant: "destructive" });
+      }
+    } catch (err: unknown) {
+      toast({
+        title: "Failed to send email",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(null);
+    }
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={sending !== null}
+        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
+        title="Send email"
+      >
+        {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-8 z-50 w-56 bg-popover border border-border rounded-xl shadow-lg py-1 text-sm">
+          <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border mb-1">
+            Send to {userEmail.split("@")[0]}
+          </p>
+          {EMAIL_OPTIONS.map((opt) => (
+            <button
+              key={opt.type}
+              onClick={() => send(opt.type)}
+              className="w-full text-left px-3 py-2 hover:bg-muted transition"
+            >
+              <span className="font-medium block">{opt.label}</span>
+              <span className="text-xs text-muted-foreground">{opt.description}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminUsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -504,6 +590,7 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1 justify-end">
+                        <SendEmailMenu userId={user.id} userEmail={user.email} />
                         <button
                           onClick={() => navigate(`/admin/users/${user.id}`)}
                           className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
