@@ -547,7 +547,7 @@ components:
           type: integer
         role:
           type: string
-          enum: [admin, sales]
+          enum: [admin, sales, data-entry]
         weeklyLeadGoal:
           type: integer
           nullable: true
@@ -572,7 +572,7 @@ components:
           type: integer
         role:
           type: string
-          enum: [admin, sales]
+          enum: [admin, sales, data-entry]
       required:
         - email
         - password
@@ -594,7 +594,7 @@ components:
           type: integer
         role:
           type: string
-          enum: [admin, sales]
+          enum: [admin, sales, data-entry]
         weeklyLeadGoal:
           type: integer
           nullable: true

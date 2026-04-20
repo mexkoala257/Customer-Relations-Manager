@@ -60,7 +60,7 @@ router.post("/setup", async (req, res): Promise<void> => {
         email: u.email.trim().toLowerCase(),
         passwordHash: h,
         staffId: staffId++,
-        role: (u.role === "admin" || u.role === "sales") ? u.role : "sales",
+        role: (u.role === "admin" || u.role === "sales" || u.role === "data-entry") ? u.role : "sales",
       }).onConflictDoNothing();
     }
   }
@@ -136,7 +136,7 @@ router.post("/setup/reconfigure", requireSuperAdmin, async (req, res): Promise<v
         email: normalized,
         passwordHash: h,
         staffId: staffId++,
-        role: (u.role === "admin" || u.role === "sales") ? u.role : "sales",
+        role: (u.role === "admin" || u.role === "sales" || u.role === "data-entry") ? u.role : "sales",
       }).onConflictDoNothing();
     }
   }
