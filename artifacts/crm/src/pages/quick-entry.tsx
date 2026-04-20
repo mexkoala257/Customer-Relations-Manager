@@ -179,7 +179,7 @@ export default function QuickEntryPage() {
                         value={customer.companyName}
                         onChange={setCustomerField("companyName")}
                         required
-                        placeholder="Acme Corp"
+                        placeholder="Company Name"
                         autoFocus
                         className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                         data-testid="customer-companyName"

@@ -50,7 +50,7 @@ export default function CustomerNewPage() {
   }
 
   const fields = [
-    { key: "companyName", label: "Company Name", required: true, placeholder: "Acme Corp" },
+    { key: "companyName", label: "Company Name", required: true, placeholder: "Company Name" },
     { key: "contactName", label: "Contact Name", required: true, placeholder: "Jane Smith" },
     { key: "phone", label: "Phone", placeholder: "555-000-1234" },
     { key: "streetAddress", label: "Street Address", placeholder: "123 Main St" },
