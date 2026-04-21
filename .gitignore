@@ -53,3 +53,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Uploaded video/file storage — these live on the server, not in git
+artifacts/api-server/uploads/

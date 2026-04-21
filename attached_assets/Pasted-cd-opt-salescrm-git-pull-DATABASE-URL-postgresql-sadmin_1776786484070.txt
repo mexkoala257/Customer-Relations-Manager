@@ -1,0 +1,76 @@
+cd /opt/salescrm
+git pull
+DATABASE_URL=postgresql://sadmin:Battery18@localhost:5432/salescrm pnpm --filter @workspace/db run push
+pnpm --filter @workspace/api-server run build
+pnpm --filter @workspace/crm run build
+pm2 restart salescrm
+remote: Enumerating objects: 42, done.
+remote: Counting objects: 100% (42/42), done.
+remote: Compressing objects: 100% (7/7), done.
+remote: Total 25 (delta 17), reused 25 (delta 17), pack-reused 0 (from 0)
+Unpacking objects: 100% (25/25), 2.22 MiB | 9.03 MiB/s, done.
+From https://github.com/mexkoala257/Customer-Relations-Manager
+   0c34dc9..48b73e9  main       -> origin/main
+Updating 0c34dc9..48b73e9
+Fast-forward
+ artifacts/api-server/package.json                                 |   2 ++
+ artifacts/api-server/src/routes/team.ts                           | 174 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ artifacts/api-server/uploads/videos/1776786077334-krbh66v0upr.mp4 | Bin 0 -> 2326563 bytes
+ artifacts/crm/src/pages/team.tsx                                  | 231 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ lib/db/src/schema/team.ts                                         |   9 ++++++
+ pnpm-lock.yaml                                                    | 110 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 520 insertions(+), 6 deletions(-)
+ create mode 100644 artifacts/api-server/uploads/videos/1776786077334-krbh66v0upr.mp4
+
+> @workspace/db@0.0.0 push /opt/salescrm/lib/db
+> drizzle-kit push --config ./drizzle.config.ts
+
+Reading config file '/opt/salescrm/lib/db/drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
+[✓] Changes applied
+
+> @workspace/api-server@0.0.0 build /opt/salescrm/artifacts/api-server
+> node ./build.mjs
+
+✘ [ERROR] Could not resolve "multer"
+
+    src/routes/team.ts:4:19:
+      4 │ import multer from "multer";
+        ╵                    ~~~~~~~~
+
+  You can mark the path "multer" as external to exclude it from the bundle, which will remove this
+  error and leave the unresolved path in the bundle.
+
+1 error
+Error: Build failed with 1 error:
+src/routes/team.ts:4:19: ERROR: Could not resolve "multer"
+    at failureErrorWithLog (/opt/salescrm/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:1467:15)
+    at /opt/salescrm/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:926:25
+    at /opt/salescrm/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:1345:9
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  errors: [Getter/Setter],
+  warnings: [Getter/Setter]
+}
+/opt/salescrm/artifacts/api-server:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 build: `node ./build.mjs`
+Exit status 1
+
+> @workspace/crm@0.0.0 build /opt/salescrm/artifacts/crm
+> vite build --config vite.config.ts
+
+vite v7.3.1 building client environment for production...
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+✓ 2414 modules transformed.
+dist/public/index.html                   0.73 kB │ gzip:   0.41 kB
+dist/public/assets/index-DY47tugI.css  140.49 kB │ gzip:  22.53 kB
+dist/public/assets/index-XrsmKXiM.js   990.10 kB │ gzip: 264.74 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 8.11s
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [salescrm](ids: [ 0 ])
+[PM2] [salescrm](0) ✓
