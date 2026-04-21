@@ -31,3 +31,12 @@ export const teamDocumentsTable = pgTable("team_documents", {
   data: text("data").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const teamVideosTable = pgTable("team_videos", {
+  id: serial("id").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

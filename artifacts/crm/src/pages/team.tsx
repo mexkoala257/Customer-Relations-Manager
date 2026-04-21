@@ -5,8 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getToken } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
-  MessageSquare, Zap, ImageIcon, FileText,
-  Send, Trash2, Loader2, Upload, X, FileDown, Link2, Copy, Check,
+  MessageSquare, Zap, ImageIcon, FileText, Video,
+  Send, Trash2, Loader2, Upload, X, FileDown, Link2, Copy, Check, Play, Monitor,
 } from "lucide-react";
 
 const API = (path: string) => `/api/team/${path}`;
@@ -577,15 +577,237 @@ function DocumentsTab({ userId, isAdmin }: { userId: string; isAdmin: boolean })
   );
 }
 
+// ── Videos Tab ────────────────────────────────────────────────────────────────
+
+type VideoItem = { id: number; title: string; originalName: string; createdAt: string; userId: string; authorEmail: string | null };
+
+function VideosTab({ userId, isAdmin }: { userId: string; isAdmin: boolean }) {
+  const { toast } = useToast();
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [title, setTitle] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [playing, setPlaying] = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useState(() => {
+    apiFetch(API("videos"))
+      .then((r) => r.json())
+      .then(setVideos)
+      .finally(() => setLoading(false));
+  });
+
+  async function load() {
+    const r = await apiFetch(API("videos"));
+    setVideos(await r.json());
+  }
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    if (!title) setTitle(f.name.replace(/\.[^.]+$/, ""));
+  }
+
+  async function upload(e: React.FormEvent) {
+    e.preventDefault();
+    if (!file) return;
+    setUploading(true);
+    setProgress(0);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("title", title.trim() || file.name.replace(/\.[^.]+$/, ""));
+
+    return new Promise<void>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", API("videos"));
+      xhr.setRequestHeader("Authorization", `Bearer ${getToken()}`);
+
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100));
+      };
+
+      xhr.onload = async () => {
+        if (xhr.status === 201) {
+          setTitle(""); setFile(null); setProgress(0);
+          if (fileRef.current) fileRef.current.value = "";
+          await load();
+        } else {
+          toast({ title: "Upload failed", description: "Could not save video", variant: "destructive" });
+        }
+        setUploading(false);
+        resolve();
+      };
+
+      xhr.onerror = () => {
+        toast({ title: "Upload failed", description: "Network error", variant: "destructive" });
+        setUploading(false);
+        resolve();
+      };
+
+      xhr.send(formData);
+    });
+  }
+
+  async function del(id: number) {
+    await apiFetch(API(`videos/${id}`), { method: "DELETE" });
+    setVideos((prev) => prev.filter((v) => v.id !== id));
+    if (playing === id) setPlaying(null);
+  }
+
+  function openDashboard(id: number) {
+    window.open(`/api/team/videos/${id}/player`, "_blank", "noopener,noreferrer");
+  }
+
+  function streamUrl(id: number) {
+    return `/api/team/videos/${id}/stream`;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Upload form */}
+      <form onSubmit={upload} className="bg-card border border-card-border rounded-xl p-4 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="flex items-center gap-3 px-4 py-3 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition">
+            <Video className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <span className="text-sm text-muted-foreground truncate">{file?.name || "Choose an MP4 video"}</span>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={onFileChange}
+            />
+          </label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Video title (optional)"
+            className="px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        {uploading && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Uploading…</span><span>{progress}%</span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-200"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={uploading || !file}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
+          data-testid="upload-video"
+        >
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          {uploading ? `Uploading ${progress}%` : "Upload Video"}
+        </button>
+      </form>
+
+      {/* Video list */}
+      {loading ? (
+        <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}</div>
+      ) : videos.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Video className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No videos yet. Upload one to share with the team.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {videos.map((v) => (
+            <div key={v.id} className="bg-background rounded-xl border border-border overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Video className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">{v.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {v.authorEmail?.split("@")[0]} · {formatTime(v.createdAt)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => setPlaying(playing === v.id ? null : v.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition"
+                    title={playing === v.id ? "Hide player" : "Play video"}
+                    data-testid={`play-video-${v.id}`}
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    {playing === v.id ? "Hide" : "Play"}
+                  </button>
+                  <button
+                    onClick={() => openDashboard(v.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800/40 text-xs font-medium transition"
+                    title="Open fullscreen on dashboard / TV display"
+                    data-testid={`dashboard-video-${v.id}`}
+                  >
+                    <Monitor className="w-3.5 h-3.5" />
+                    Dashboard
+                  </button>
+                  {(isAdmin || v.userId === userId) && (
+                    <button
+                      onClick={() => del(v.id)}
+                      className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
+                      title="Delete video"
+                      data-testid={`delete-video-${v.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Inline player */}
+              {playing === v.id && (
+                <div className="border-t border-border bg-black">
+                  <video
+                    key={v.id}
+                    src={streamUrl(v.id)}
+                    controls
+                    autoPlay
+                    className="w-full max-h-72 object-contain"
+                    data-testid={`video-player-${v.id}`}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-2 flex items-start gap-2 px-4 py-3 bg-muted/40 border border-border/50 rounded-xl text-xs text-muted-foreground">
+        <Monitor className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+        <span>
+          <strong className="font-medium text-foreground">Dashboard mode</strong> opens the video fullscreen with autoplay in a new tab — ideal for displaying on a TV or office screen (e.g. Dakboard).
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-type Tab = "messages" | "updates" | "photos" | "documents";
+type Tab = "messages" | "updates" | "photos" | "documents" | "videos";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "messages", label: "Messages", icon: MessageSquare },
   { id: "updates", label: "Quick Updates", icon: Zap },
   { id: "photos", label: "Photos", icon: ImageIcon },
   { id: "documents", label: "Documents", icon: FileText },
+  { id: "videos", label: "Videos", icon: Video },
 ];
 
 export default function TeamPage() {
@@ -599,7 +821,7 @@ export default function TeamPage() {
       <div className="p-6 max-w-4xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Messages, updates, photos and documents for the whole team</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Messages, updates, photos, documents and videos for the whole team</p>
         </div>
 
         {/* Tab bar */}
@@ -626,6 +848,7 @@ export default function TeamPage() {
         {tab === "updates" && <UpdatesTab userId={uid} isAdmin={isAdmin} />}
         {tab === "photos" && <PhotosTab userId={uid} isAdmin={isAdmin} />}
         {tab === "documents" && <DocumentsTab userId={uid} isAdmin={isAdmin} />}
+        {tab === "videos" && <VideosTab userId={uid} isAdmin={isAdmin} />}
       </div>
     </AppLayout>
   );
