@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,7 +17,9 @@ import {
   MessageSquare,
   SlidersHorizontal,
   BookOpen,
+  Bug,
 } from "lucide-react";
+import { BugReportModal } from "@/components/BugReportModal";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
@@ -32,12 +35,14 @@ const adminItems = [
   { label: "Manage Users", icon: Users, href: "/admin/users" },
   { label: "Reminders", icon: Bell, href: "/admin/reminders" },
   { label: "Reports", icon: FileText, href: "/admin/reports" },
+  { label: "Bug Reports", icon: Bug, href: "/admin/bug-reports" },
 ];
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
   const [location] = useLocation();
   const { userEmail, userRole, staffId, logout } = useAuth();
   const { settings } = useAppSettings();
+  const [showBugReport, setShowBugReport] = useState(false);
 
   function isActive(href: string) {
     if (href === "/") return location === "/";
@@ -170,6 +175,14 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
         <button
+          onClick={() => { setShowBugReport(true); onClose?.(); }}
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all mb-1"
+          data-testid="report-bug-button"
+        >
+          <Bug className="w-4 h-4" />
+          <span>Report a Bug</span>
+        </button>
+        <button
           onClick={logout}
           className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all"
           data-testid="logout-button"
@@ -178,6 +191,8 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           <span>Log out</span>
         </button>
       </div>
+
+      {showBugReport && <BugReportModal onClose={() => setShowBugReport(false)} />}
     </div>
   );
 }

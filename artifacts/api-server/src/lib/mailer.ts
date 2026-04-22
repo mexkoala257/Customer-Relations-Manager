@@ -77,6 +77,66 @@ async function deliver(to: string, subject: string, html: string, text: string):
   return { sent: true, message: "Email sent successfully" };
 }
 
+export async function sendBugReportEmail(opts: {
+  toEmail: string;
+  reporterEmail: string;
+  title: string;
+  description: string;
+  severity: string;
+  pageUrl: string | null;
+  reportId: number;
+}): Promise<{ sent: boolean; message: string }> {
+  const settings = await getAllSettings();
+  const { companyName, accentBg, accentText } = getEmailBranding(settings);
+
+  const severityColors: Record<string, string> = {
+    low: "#22c55e",
+    medium: "#f59e0b",
+    high: "#ef4444",
+  };
+  const sColor = severityColors[opts.severity] ?? "#f59e0b";
+
+  const subject = `[Bug Report #${opts.reportId}] ${opts.title}`;
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1f2937">
+      ${emailHeader(companyName, accentBg, accentText, "Bug Report Submitted")}
+      <div style="background:#fff;border:1px solid #e5e7eb;padding:24px">
+        <p style="margin:0 0 16px">A bug report has been submitted by <strong>${opts.reporterEmail}</strong>.</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:16px">
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">Report #</td>
+            <td style="padding:8px 0;font-weight:600">#${opts.reportId}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;vertical-align:top">Title</td>
+            <td style="padding:8px 0;font-weight:600">${opts.title}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;vertical-align:top">Severity</td>
+            <td style="padding:8px 0">
+              <span style="background:${sColor}20;color:${sColor};padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;text-transform:uppercase">${opts.severity}</span>
+            </td>
+          </tr>
+          ${opts.pageUrl ? `<tr>
+            <td style="padding:8px 0;color:#6b7280;vertical-align:top">Page</td>
+            <td style="padding:8px 0;font-family:monospace;font-size:13px">${opts.pageUrl}</td>
+          </tr>` : ""}
+        </table>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:16px">
+          <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">Description</p>
+          <p style="margin:0;white-space:pre-wrap;font-size:14px;line-height:1.6">${opts.description}</p>
+        </div>
+        <p style="margin:16px 0 0;font-size:12px;color:#9ca3af">Log in to the admin panel to view and manage bug reports.</p>
+      </div>
+      ${emailFooter(companyName)}
+    </div>`;
+
+  const text = `Bug Report #${opts.reportId}\n\nReported by: ${opts.reporterEmail}\nTitle: ${opts.title}\nSeverity: ${opts.severity}\n${opts.pageUrl ? `Page: ${opts.pageUrl}\n` : ""}\nDescription:\n${opts.description}`;
+
+  return deliver(opts.toEmail, subject, html, text);
+}
+
 export async function sendFollowUpEmail(opts: {
   toEmail: string;
   toName: string;

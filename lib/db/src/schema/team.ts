@@ -1,4 +1,4 @@
-import { pgTable, serial, text, uuid, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, uuid, timestamp, boolean } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 export const teamMessagesTable = pgTable("team_messages", {
