@@ -28,6 +28,7 @@ import SettingsPage from "@/pages/settings";
 import MyRemindersPage from "@/pages/my-reminders";
 import GuidePage from "@/pages/guide";
 import TeamPage from "@/pages/team";
+import FollowingPage from "@/pages/following";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -172,6 +173,10 @@ function AppRouter() {
 
         <Route path="/team">
           <ProtectedRoute component={TeamPage} />
+        </Route>
+
+        <Route path="/following">
+          <ProtectedRoute component={FollowingPage} />
         </Route>
 
         <Route path="/guide">
