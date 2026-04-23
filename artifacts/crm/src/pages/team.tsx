@@ -265,6 +265,11 @@ function UpdatesTab({ userId, isAdmin }: { userId: string; isAdmin: boolean }) {
         </div>
       </form>
 
+      <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-900/10 dark:border-amber-700/40 text-amber-800 dark:text-amber-400 text-xs">
+        <span className="mt-0.5 flex-shrink-0">⚠️</span>
+        <span>Updates posted here are visible to everyone in the company. Please keep content professional and relevant.</span>
+      </div>
+
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}</div>
       ) : updates.length === 0 ? (
