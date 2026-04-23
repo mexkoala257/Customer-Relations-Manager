@@ -8,3 +8,4 @@ export * from "./account-notes";
 export * from "./user-reminder-prefs";
 export * from "./bug-reports";
 export * from "./watchers";
+export * from "./email-logs";

@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   BookOpen,
   Bug,
+  Mail,
 } from "lucide-react";
 import { BugReportModal } from "@/components/BugReportModal";
 
@@ -38,6 +39,7 @@ const adminItems = [
   { label: "Reminders", icon: Bell, href: "/admin/reminders" },
   { label: "Reports", icon: FileText, href: "/admin/reports" },
   { label: "Bug Reports", icon: Bug, href: "/admin/bug-reports" },
+  { label: "Email Log", icon: Mail, href: "/admin/email-logs" },
 ];
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {

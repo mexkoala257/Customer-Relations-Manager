@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import { logger } from "./logger";
-import { db, appSettingsTable } from "@workspace/db";
+import { db, appSettingsTable, emailLogsTable } from "@workspace/db";
 
 const ACCENT_HEX: Record<string, { bg: string; text: string }> = {
   amber:  { bg: "#f59e0b", text: "#1c1917" },
@@ -67,14 +67,31 @@ async function createTransporter() {
   return { transporter, from, settings: dbSettings };
 }
 
-async function deliver(to: string, subject: string, html: string, text: string): Promise<{ sent: boolean; message: string }> {
+async function deliver(to: string, subject: string, html: string, text: string, type: string): Promise<{ sent: boolean; message: string }> {
   const { transporter, from } = await createTransporter();
+
   if (!transporter) {
     logger.info({ to, subject }, "Email would be sent (SMTP not configured)");
+    try {
+      await db.insert(emailLogsTable).values({ type, toEmail: to, subject, status: "skipped" });
+    } catch { /* don't block on log failure */ }
     return { sent: false, message: "SMTP not configured, email logged only" };
   }
-  await transporter.sendMail({ from, to, subject, html, text });
-  return { sent: true, message: "Email sent successfully" };
+
+  try {
+    await transporter.sendMail({ from, to, subject, html, text });
+    try {
+      await db.insert(emailLogsTable).values({ type, toEmail: to, subject, status: "sent" });
+    } catch { /* don't block on log failure */ }
+    return { sent: true, message: "Email sent successfully" };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error({ to, subject, err }, "Failed to send email");
+    try {
+      await db.insert(emailLogsTable).values({ type, toEmail: to, subject, status: "failed", errorMessage: msg });
+    } catch { /* don't block on log failure */ }
+    return { sent: false, message: `Email failed: ${msg}` };
+  }
 }
 
 export async function sendWatcherNotificationEmail(opts: {
@@ -126,7 +143,7 @@ export async function sendWatcherNotificationEmail(opts: {
     opts.changes.map((c) => `• ${c.field}: "${c.from}" → "${c.to}"`).join("\n") +
     `\n\nView at: ${opts.entityUrl}`;
 
-  return deliver(opts.toEmail, subject, html, text);
+  return deliver(opts.toEmail, subject, html, text, "watcher_notification");
 }
 
 export async function sendBugReportEmail(opts: {
@@ -186,7 +203,7 @@ export async function sendBugReportEmail(opts: {
 
   const text = `Bug Report #${opts.reportId}\n\nReported by: ${opts.reporterEmail}\nTitle: ${opts.title}\nSeverity: ${opts.severity}\n${opts.pageUrl ? `Page: ${opts.pageUrl}\n` : ""}\nDescription:\n${opts.description}`;
 
-  return deliver(opts.toEmail, subject, html, text);
+  return deliver(opts.toEmail, subject, html, text, "bug_report");
 }
 
 export async function sendFollowUpEmail(opts: {
@@ -215,7 +232,7 @@ export async function sendFollowUpEmail(opts: {
       ${emailFooter(brandName)}
     </div>`;
 
-  return deliver(opts.toEmail, `Follow-up: ${opts.companyName}`, html, text);
+  return deliver(opts.toEmail, `Follow-up: ${opts.companyName}`, html, text, "follow_up");
 }
 
 export async function sendFollowUpReminderEmail(opts: {
@@ -260,7 +277,7 @@ export async function sendFollowUpReminderEmail(opts: {
   const text = `Hi ${opts.repName},\n\nYou have ${opts.leads.length} upcoming follow-up(s):\n\n` +
     opts.leads.map((l) => `• ${l.companyName} (${l.contactName}) — ${l.followUpDate} [${l.status}]`).join("\n");
 
-  return deliver(opts.toEmail, subject, html, text);
+  return deliver(opts.toEmail, subject, html, text, "reminder_upcoming");
 }
 
 export async function sendPastDueReminderEmail(opts: {
@@ -311,7 +328,7 @@ export async function sendPastDueReminderEmail(opts: {
     opts.leads.map((l) => `• ${l.companyName} (${l.contactName}) — was due ${l.followUpDate} [${l.status}]`).join("\n") +
     `\n\nPlease log in to update these leads.`;
 
-  return deliver(opts.toEmail, subject, html, text);
+  return deliver(opts.toEmail, subject, html, text, "reminder_past_due");
 }
 
 export async function sendSummaryEmail(opts: {
@@ -373,5 +390,5 @@ export async function sendSummaryEmail(opts: {
     `Recent Activity:\n${opts.recentLeads.map((l) => `• ${l.companyName} — ${l.status} (${l.repEmail})`).join("\n") || "None"}\n\n` +
     `Upcoming Follow-ups:\n${opts.upcomingLeads.map((l) => `• ${l.companyName} — ${l.followUpDate} (${l.repEmail})`).join("\n") || "None"}`;
 
-  return deliver(opts.toEmail, subject, html, text);
+  return deliver(opts.toEmail, subject, html, text, "summary");
 }

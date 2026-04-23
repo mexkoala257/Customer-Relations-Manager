@@ -24,6 +24,7 @@ import AdminUserEditPage from "@/pages/admin-user-edit";
 import AdminRemindersPage from "@/pages/admin-reminders";
 import AdminReportsPage from "@/pages/admin-reports";
 import AdminBugReportsPage from "@/pages/admin-bug-reports";
+import AdminEmailLogsPage from "@/pages/admin-email-logs";
 import SettingsPage from "@/pages/settings";
 import MyRemindersPage from "@/pages/my-reminders";
 import GuidePage from "@/pages/guide";
@@ -161,6 +162,10 @@ function AppRouter() {
 
         <Route path="/admin/bug-reports">
           <ProtectedRoute component={AdminBugReportsPage} adminOnly />
+        </Route>
+
+        <Route path="/admin/email-logs">
+          <ProtectedRoute component={AdminEmailLogsPage} adminOnly />
         </Route>
 
         <Route path="/settings">
