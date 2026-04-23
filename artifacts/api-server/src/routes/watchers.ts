@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, watchersTable, usersTable, leadsTable, customersTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
 const router = Router();
@@ -10,46 +10,85 @@ const router = Router();
 router.get("/watchers/me", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;
 
-  const rows = await db
-    .select({
-      id: watchersTable.id,
-      entityType: watchersTable.entityType,
-      entityId: watchersTable.entityId,
-      createdAt: watchersTable.createdAt,
-      leadStatus: leadsTable.status,
-      leadCustomerId: leadsTable.customerId,
-      companyName: customersTable.companyName,
-      contactName: customersTable.contactName,
-    })
+  // Fetch all watcher rows for this user
+  const watcherRows = await db
+    .select()
     .from(watchersTable)
-    .leftJoin(leadsTable, and(
-      eq(watchersTable.entityType, "lead"),
-      eq(watchersTable.entityId, leadsTable.id)
-    ))
-    .leftJoin(customersTable, and(
-      eq(watchersTable.entityType, "customer"),
-      eq(watchersTable.entityId, customersTable.id)
-    ))
     .where(eq(watchersTable.userId, userId));
 
-  // For leads, we also need the customer name — do a secondary lookup
-  const leadRows = rows.filter((r) => r.entityType === "lead" && r.leadCustomerId && !r.companyName);
-  let extraCustomers: Record<string, string> = {};
-  if (leadRows.length > 0) {
-    const ids = [...new Set(leadRows.map((r) => r.leadCustomerId!))];
-    const custRows = await db.select({ id: customersTable.id, companyName: customersTable.companyName }).from(customersTable);
-    extraCustomers = Object.fromEntries(custRows.map((c) => [c.id, c.companyName]));
+  if (watcherRows.length === 0) {
+    res.json([]);
+    return;
   }
 
-  const result = rows.map((r) => ({
-    id: r.id,
-    entityType: r.entityType,
-    entityId: r.entityId,
-    createdAt: r.createdAt,
-    companyName: r.companyName ?? (r.leadCustomerId ? extraCustomers[r.leadCustomerId] : null) ?? "Unknown",
-    contactName: r.contactName ?? null,
-    leadStatus: r.leadStatus ?? null,
-  }));
+  const leadWatchers = watcherRows.filter((w) => w.entityType === "lead");
+  const customerWatchers = watcherRows.filter((w) => w.entityType === "customer");
+
+  const result: Array<{
+    id: number;
+    entityType: "lead" | "customer";
+    entityId: string;
+    createdAt: string;
+    companyName: string;
+    contactName: string | null;
+    leadStatus: string | null;
+  }> = [];
+
+  // Resolve lead watchers — join leads → customers
+  // entityId is stored as text; leads.id is uuid — cast uuid to text for comparison
+  if (leadWatchers.length > 0) {
+    const leadIds = leadWatchers.map((w) => w.entityId);
+    const leads = await db
+      .select({
+        id: leadsTable.id,
+        status: leadsTable.status,
+        customerId: leadsTable.customerId,
+        companyName: customersTable.companyName,
+        contactName: customersTable.contactName,
+      })
+      .from(leadsTable)
+      .leftJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
+      .where(inArray(sql`${leadsTable.id}::text`, leadIds));
+
+    const leadMap = new Map(leads.map((l) => [l.id, l]));
+
+    for (const w of leadWatchers) {
+      const lead = leadMap.get(w.entityId);
+      result.push({
+        id: w.id,
+        entityType: "lead",
+        entityId: w.entityId,
+        createdAt: w.createdAt as unknown as string,
+        companyName: lead?.companyName ?? "Unknown",
+        contactName: lead?.contactName ?? null,
+        leadStatus: lead?.status ?? null,
+      });
+    }
+  }
+
+  // Resolve customer watchers — same uuid→text cast
+  if (customerWatchers.length > 0) {
+    const customerIds = customerWatchers.map((w) => w.entityId);
+    const customers = await db
+      .select({ id: customersTable.id, companyName: customersTable.companyName, contactName: customersTable.contactName })
+      .from(customersTable)
+      .where(inArray(sql`${customersTable.id}::text`, customerIds));
+
+    const customerMap = new Map(customers.map((c) => [c.id, c]));
+
+    for (const w of customerWatchers) {
+      const customer = customerMap.get(w.entityId);
+      result.push({
+        id: w.id,
+        entityType: "customer",
+        entityId: w.entityId,
+        createdAt: w.createdAt as unknown as string,
+        companyName: customer?.companyName ?? "Unknown",
+        contactName: customer?.contactName ?? null,
+        leadStatus: null,
+      });
+    }
+  }
 
   res.json(result);
 });
