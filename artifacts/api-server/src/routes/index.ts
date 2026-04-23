@@ -12,6 +12,7 @@ import setupRouter from "./setup";
 import exportRouter from "./export";
 import userReminderPrefsRouter from "./user-reminder-prefs";
 import bugReportsRouter from "./bug-reports";
+import watchersRouter from "./watchers";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(settingsRouter);
 router.use(exportRouter);
 router.use(userReminderPrefsRouter);
 router.use(bugReportsRouter);
+router.use(watchersRouter);
 
 export default router;

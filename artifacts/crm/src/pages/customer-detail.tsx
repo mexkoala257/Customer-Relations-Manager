@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X, StickyNote, Trash2, PlusCircle, UserRound } from "lucide-react";
 import { LEAD_STATUSES } from "@/lib/lead-status";
+import { WatchButton } from "@/components/WatchButton";
 
 interface AccountNote {
   id: string;
@@ -287,6 +288,7 @@ export default function CustomerDetailPage({ id }: { id: string }) {
             </h1>
             <p className="text-sm text-muted-foreground">{customer.contactName}</p>
           </div>
+          {!isEditing && <WatchButton entityType="customer" entityId={id} />}
           {mapsUrl && !isEditing && (
             <a
               href={mapsUrl}

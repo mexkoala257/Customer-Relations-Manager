@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, MapPin, Loader2, Save, UserCog, CheckCircle2 } from "lucide-react";
+import { WatchButton } from "@/components/WatchButton";
 
 import { LEAD_STATUSES } from "@/lib/lead-status";
 const STATUS_OPTIONS = [...LEAD_STATUSES];
@@ -132,24 +133,27 @@ export default function LeadDetailPage({ id }: { id: string }) {
           <Link href="/leads" className="p-2 rounded-lg hover:bg-muted transition text-muted-foreground">
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold" data-testid="lead-detail-title">
               {lead.customer?.companyName}
             </h1>
             <p className="text-sm text-muted-foreground">{lead.customer?.contactName}</p>
           </div>
-          {mapsUrl && (
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition"
-              data-testid="navigate-lead"
-            >
-              <MapPin className="w-4 h-4" />
-              Navigate
-            </a>
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <WatchButton entityType="lead" entityId={id} />
+            {mapsUrl && (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition"
+                data-testid="navigate-lead"
+              >
+                <MapPin className="w-4 h-4" />
+                Navigate
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Customer Info */}

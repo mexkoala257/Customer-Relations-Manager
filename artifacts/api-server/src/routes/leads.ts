@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { db, leadsTable, customersTable, usersTable } from "@workspace/db";
+import { db, leadsTable, customersTable, usersTable, watchersTable } from "@workspace/db";
 import { eq, and, desc, asc, sql, ne, inArray } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
-import { sendFollowUpEmail } from "../lib/mailer";
+import { sendFollowUpEmail, sendWatcherNotificationEmail } from "../lib/mailer";
 import {
   CreateLeadBody,
   UpdateLeadBody,
@@ -286,11 +286,53 @@ router.patch("/leads/:id", requireAuth, async (req, res): Promise<void> => {
     delete (updateData as Record<string, unknown>).userId;
   }
 
+  // Detect what changed for watcher notifications
+  const watchedFields: Array<{ field: string; key: keyof typeof updateData; existing: string | null }> = [
+    { field: "Status", key: "status", existing: existing.status },
+    { field: "Notes", key: "notes", existing: existing.notes ?? "" },
+    { field: "Follow-up Date", key: "followUpDate", existing: existing.followUpDate ?? "" },
+  ];
+  const changes = watchedFields
+    .filter(({ key }) => key in updateData && String((updateData as Record<string, unknown>)[key] ?? "") !== String(existing[key] ?? ""))
+    .map(({ field, key, existing: from }) => ({
+      field,
+      from: from || "(none)",
+      to: String((updateData as Record<string, unknown>)[key] ?? "") || "(none)",
+    }));
+
   const [lead] = await db
     .update(leadsTable)
     .set(updateData)
     .where(eq(leadsTable.id, params.data.id))
     .returning();
+
+  // Notify watchers asynchronously (don't block the response)
+  if (changes.length > 0) {
+    (async () => {
+      try {
+        const [updaterUser] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.user!.userId));
+        const [customer] = await db.select({ companyName: customersTable.companyName }).from(customersTable).where(eq(customersTable.id, existing.customerId));
+        const watchers = await db
+          .select({ userId: watchersTable.userId, email: usersTable.email })
+          .from(watchersTable)
+          .leftJoin(usersTable, eq(watchersTable.userId, usersTable.id))
+          .where(and(eq(watchersTable.entityType, "lead"), eq(watchersTable.entityId, String(params.data.id))));
+
+        const entityUrl = `${process.env.APP_URL ?? ""}/leads/${params.data.id}`;
+        for (const w of watchers) {
+          if (!w.email || w.userId === req.user!.userId) continue; // don't notify the person who made the change
+          await sendWatcherNotificationEmail({
+            toEmail: w.email,
+            entityType: "lead",
+            entityName: customer?.companyName ?? "Lead",
+            changedBy: updaterUser?.email ?? "A team member",
+            changes,
+            entityUrl,
+          });
+        }
+      } catch { /* silent */ }
+    })();
+  }
 
   res.json(lead);
 });

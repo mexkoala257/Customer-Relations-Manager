@@ -77,6 +77,58 @@ async function deliver(to: string, subject: string, html: string, text: string):
   return { sent: true, message: "Email sent successfully" };
 }
 
+export async function sendWatcherNotificationEmail(opts: {
+  toEmail: string;
+  entityType: "lead" | "customer";
+  entityName: string;
+  changedBy: string;
+  changes: Array<{ field: string; from: string; to: string }>;
+  entityUrl: string;
+}): Promise<{ sent: boolean; message: string }> {
+  const settings = await getAllSettings();
+  const { companyName, accentBg, accentText } = getEmailBranding(settings);
+
+  const label = opts.entityType === "lead" ? "Lead" : "Customer";
+  const subject = `[${label} Update] ${opts.entityName} has been updated`;
+
+  const changeRows = opts.changes.map((c) => `
+    <tr style="border-bottom:1px solid #e5e7eb">
+      <td style="padding:8px 12px;color:#6b7280;font-size:13px;width:160px">${c.field}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#9ca3af;text-decoration:line-through">${c.from}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#111827;font-weight:600">${c.to}</td>
+    </tr>`).join("");
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1f2937">
+      ${emailHeader(companyName, accentBg, accentText, `${label} Updated`)}
+      <div style="background:#fff;border:1px solid #e5e7eb;padding:24px">
+        <p style="margin:0 0 16px">
+          <strong>${opts.changedBy}</strong> made changes to the ${label.toLowerCase()} <strong>${opts.entityName}</strong> that you are following.
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+          <thead>
+            <tr style="background:#f9fafb;text-align:left">
+              <th style="padding:8px 12px;font-size:12px;color:#6b7280;font-weight:600">Field</th>
+              <th style="padding:8px 12px;font-size:12px;color:#6b7280;font-weight:600">Was</th>
+              <th style="padding:8px 12px;font-size:12px;color:#6b7280;font-weight:600">Now</th>
+            </tr>
+          </thead>
+          <tbody>${changeRows}</tbody>
+        </table>
+        <a href="${opts.entityUrl}" style="display:inline-block;background:${accentBg};color:${accentText};padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none">
+          View ${label}
+        </a>
+      </div>
+      ${emailFooter(companyName)}
+    </div>`;
+
+  const text = `${opts.changedBy} updated ${opts.entityName}:\n\n` +
+    opts.changes.map((c) => `• ${c.field}: "${c.from}" → "${c.to}"`).join("\n") +
+    `\n\nView at: ${opts.entityUrl}`;
+
+  return deliver(opts.toEmail, subject, html, text);
+}
+
 export async function sendBugReportEmail(opts: {
   toEmail: string;
   reporterEmail: string;

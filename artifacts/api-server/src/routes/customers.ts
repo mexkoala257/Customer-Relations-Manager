@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { db, customersTable, leadsTable, usersTable, accountNotesTable } from "@workspace/db";
+import { db, customersTable, leadsTable, usersTable, accountNotesTable, watchersTable } from "@workspace/db";
 import { eq, ilike, or, desc, and } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
+import { sendWatcherNotificationEmail } from "../lib/mailer";
 import {
   CreateCustomerBody,
   UpdateCustomerBody,
@@ -114,6 +115,9 @@ router.patch("/customers/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  // Fetch existing to detect changes
+  const [existing] = await db.select().from(customersTable).where(eq(customersTable.id, params.data.id));
+
   const [customer] = await db
     .update(customersTable)
     .set(parsed.data)
@@ -123,6 +127,50 @@ router.patch("/customers/:id", requireAuth, async (req, res): Promise<void> => {
   if (!customer) {
     res.status(404).json({ error: "Customer not found" });
     return;
+  }
+
+  // Notify watchers of status/notes changes
+  if (existing) {
+    const watchedFields = [
+      { field: "Company Name", key: "companyName" as const },
+      { field: "Contact Name", key: "contactName" as const },
+      { field: "Phone", key: "phone" as const },
+      { field: "City", key: "city" as const },
+      { field: "State", key: "state" as const },
+    ];
+    const changes = watchedFields
+      .filter(({ key }) => key in parsed.data && String((parsed.data as Record<string, unknown>)[key] ?? "") !== String(existing[key] ?? ""))
+      .map(({ field, key }) => ({
+        field,
+        from: String(existing[key] ?? "") || "(none)",
+        to: String((parsed.data as Record<string, unknown>)[key] ?? "") || "(none)",
+      }));
+
+    if (changes.length > 0) {
+      (async () => {
+        try {
+          const [updaterUser] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.user!.userId));
+          const watchers = await db
+            .select({ userId: watchersTable.userId, email: usersTable.email })
+            .from(watchersTable)
+            .leftJoin(usersTable, eq(watchersTable.userId, usersTable.id))
+            .where(and(eq(watchersTable.entityType, "customer"), eq(watchersTable.entityId, params.data.id)));
+
+          const entityUrl = `${process.env.APP_URL ?? ""}/customers/${params.data.id}`;
+          for (const w of watchers) {
+            if (!w.email || w.userId === req.user!.userId) continue;
+            await sendWatcherNotificationEmail({
+              toEmail: w.email,
+              entityType: "customer",
+              entityName: existing.companyName,
+              changedBy: updaterUser?.email ?? "A team member",
+              changes,
+              entityUrl,
+            });
+          }
+        } catch { /* silent */ }
+      })();
+    }
   }
 
   res.json(customer);
