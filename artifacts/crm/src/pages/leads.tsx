@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "wouter";
+import { useState, useEffect } from "react";
+import { Link, useSearch } from "wouter";
 import {
   useListLeads,
   useDeleteLead,
@@ -271,8 +271,24 @@ export default function LeadsPage() {
   const isDataEntry = userRole === "data-entry";
   const canSeeAll = isAdmin || isDataEntry;
 
-  const [viewMode, setViewMode] = useState<ViewMode>("all");
-  const [statusFilter, setStatusFilter] = useState("");
+  const search = useSearch();
+  const searchParams = new URLSearchParams(search);
+  const urlStatus = searchParams.get("status") ?? "";
+  const urlView = (searchParams.get("view") ?? "") as ViewMode | "";
+
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    urlView === "this-week" || urlView === "past-due" ? urlView : "all"
+  );
+  const [statusFilter, setStatusFilter] = useState(urlStatus);
+
+  // Sync state when URL params change (e.g. navigating from dashboard)
+  useEffect(() => {
+    const sp = new URLSearchParams(search);
+    const s = sp.get("status") ?? "";
+    const v = (sp.get("view") ?? "") as ViewMode | "";
+    setStatusFilter(s);
+    setViewMode(v === "this-week" || v === "past-due" ? v : "all");
+  }, [search]);
 
   const { data: allUsers } = useListUsers({ query: { enabled: isAdmin } });
 

@@ -29,24 +29,17 @@ function StatCard({
   icon: Icon,
   accent,
   danger,
+  href,
 }: {
   label: string;
   value: number | undefined;
   icon: React.ElementType;
   accent?: boolean;
   danger?: boolean;
+  href?: string;
 }) {
-  return (
-    <div
-      className={cn(
-        "rounded-xl p-5 border",
-        danger
-          ? "bg-destructive/10 border-destructive/30 dark:bg-destructive/20"
-          : accent
-          ? "bg-accent text-accent-foreground border-accent"
-          : "bg-card border-card-border"
-      )}
-    >
+  const inner = (
+    <>
       <div className="flex items-center justify-between mb-3">
         <span className={cn(
           "text-xs font-semibold uppercase tracking-wider",
@@ -64,8 +57,28 @@ function StatCard({
       <div className={cn("text-3xl font-bold tracking-tight", danger && "text-destructive")}>
         {value ?? "—"}
       </div>
-    </div>
+      {href && (
+        <p className={cn("text-xs mt-2", danger ? "text-destructive/70" : accent ? "text-accent-foreground/60" : "text-muted-foreground/70")}>
+          View →
+        </p>
+      )}
+    </>
   );
+
+  const cls = cn(
+    "rounded-xl p-5 border block transition-all",
+    danger
+      ? "bg-destructive/10 border-destructive/30 dark:bg-destructive/20"
+      : accent
+      ? "bg-accent text-accent-foreground border-accent"
+      : "bg-card border-card-border",
+    href && "hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
+  );
+
+  if (href) {
+    return <Link href={href} className={cls}>{inner}</Link>;
+  }
+  return <div className={cls}>{inner}</div>;
 }
 
 function WeeklyGoalCard({
@@ -82,8 +95,8 @@ function WeeklyGoalCard({
   const met = hasGoal && count >= goal!;
 
   return (
-    <div className={cn(
-      "rounded-xl p-5 border col-span-2 lg:col-span-1",
+    <Link href="/leads" className={cn(
+      "rounded-xl p-5 border col-span-2 lg:col-span-1 block transition-all hover:shadow-md hover:-translate-y-0.5",
       met ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800" : "bg-card border-card-border"
     )}>
       <div className="flex items-center justify-between mb-3">
@@ -136,7 +149,7 @@ function WeeklyGoalCard({
       {!hasGoal && (
         <p className="text-xs text-muted-foreground">No weekly goal set</p>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -177,16 +190,17 @@ export default function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          <StatCard label="My Leads" value={summary?.myLeads} icon={TrendingUp} />
-          <StatCard label="Follow-ups Today" value={summary?.followUpsToday} icon={Calendar} accent />
-          <StatCard label="Total Customers" value={summary?.totalCustomers} icon={Building2} />
-          <StatCard label="Active Leads" value={summary?.totalLeads} icon={Users} />
-          <StatCard label="Close Win" value={summary?.wonLeads} icon={CheckCircle} />
+          <StatCard label="My Leads" value={summary?.myLeads} icon={TrendingUp} href="/leads" />
+          <StatCard label="Follow-ups Today" value={summary?.followUpsToday} icon={Calendar} accent href="/leads?view=this-week" />
+          <StatCard label="Total Customers" value={summary?.totalCustomers} icon={Building2} href="/customers" />
+          <StatCard label="Active Leads" value={summary?.totalLeads} icon={Users} href="/leads" />
+          <StatCard label="Close Win" value={summary?.wonLeads} icon={CheckCircle} href="/leads?status=Close+Win" />
           <StatCard
             label="Overdue Follow-ups"
             value={summary?.overdueLeads}
             icon={AlertTriangle}
             danger={!!summary?.overdueLeads && summary.overdueLeads > 0}
+            href="/leads?view=past-due"
           />
           <WeeklyGoalCard
             leadsThisWeek={summary?.leadsThisWeek}
@@ -224,16 +238,20 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
                 <div className="space-y-2 flex-1">
                   {chartData.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between text-sm">
+                    <Link
+                      key={item.name}
+                      href={`/leads?status=${encodeURIComponent(item.name)}`}
+                      className="flex items-center justify-between text-sm rounded-lg px-2 py-1 hover:bg-muted transition group"
+                    >
                       <div className="flex items-center gap-2">
                         <div
                           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                           style={{ background: item.color }}
                         />
-                        <span>{item.name}</span>
+                        <span className="group-hover:text-primary transition">{item.name}</span>
                       </div>
                       <span className="font-semibold">{item.value}</span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
