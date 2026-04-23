@@ -308,7 +308,7 @@ export default function CustomerDetailPage({ id }: { id: string }) {
               data-testid="new-lead-from-customer"
             >
               <PlusCircle className="w-4 h-4" />
-              New Lead
+              New Interaction
             </button>
           )}
         </div>
