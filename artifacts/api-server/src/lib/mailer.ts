@@ -337,10 +337,10 @@ export async function sendSummaryEmail(opts: {
   recipientName: string;
   periodLabel: string;
   sections?: ReportSection[];
-  recentLeads: Array<{ companyName: string; contactName: string; status: string; repEmail: string; updatedAt: string }>;
-  upcomingLeads: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string }>;
-  overdueLeads?: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string }>;
-  wonLeads?: Array<{ companyName: string; contactName: string; status: string; repEmail: string; updatedAt: string }>;
+  recentLeads: Array<{ companyName: string; contactName: string; status: string; repEmail: string; updatedAt: string; notes?: string | null }>;
+  upcomingLeads: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string; notes?: string | null }>;
+  overdueLeads?: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string; notes?: string | null }>;
+  wonLeads?: Array<{ companyName: string; contactName: string; status: string; repEmail: string; updatedAt: string; notes?: string | null }>;
   pipelineCounts?: Array<{ status: string; count: number }>;
   topPerformers?: Array<{ repEmail: string; repName: string; count: number }>;
 }): Promise<{ sent: boolean; message: string }> {
@@ -395,12 +395,12 @@ export async function sendSummaryEmail(opts: {
     const daysBack = sec?.daysBack ?? 7;
     htmlParts.push(sectionHeader(`Recent Activity (last ${daysBack} days)`));
     if (opts.recentLeads.length) {
-      const rows = opts.recentLeads.map((l) => mkRow([l.companyName, l.contactName, l.status, l.repEmail])).join("");
-      htmlParts.push(tableWrap(["Company", "Contact", "Status", "Rep"], rows));
+      const rows = opts.recentLeads.map((l) => mkRow([l.companyName, l.contactName, l.status, l.repEmail, l.notes || "—"])).join("");
+      htmlParts.push(tableWrap(["Company", "Contact", "Status", "Rep", "Notes"], rows));
     } else {
       htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No recent activity this period.</p>`);
     }
-    textParts.push(`Recent Activity:\n${opts.recentLeads.map((l) => `• ${l.companyName} — ${l.status} (${l.repEmail})`).join("\n") || "None"}`);
+    textParts.push(`Recent Activity:\n${opts.recentLeads.map((l) => `• ${l.companyName} — ${l.status} (${l.repEmail})${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
   }
 
   // Upcoming Follow-ups
@@ -409,12 +409,12 @@ export async function sendSummaryEmail(opts: {
     const daysAhead = sec?.daysAhead ?? 7;
     htmlParts.push(sectionHeader(`Upcoming Follow-ups (next ${daysAhead} days)`, "#065f46"));
     if (opts.upcomingLeads.length) {
-      const rows = opts.upcomingLeads.map((l) => mkRow([l.companyName, l.contactName, l.followUpDate, l.status, l.repEmail])).join("");
-      htmlParts.push(tableWrap(["Company", "Contact", "Date", "Status", "Rep"], rows, "#ecfdf5"));
+      const rows = opts.upcomingLeads.map((l) => mkRow([l.companyName, l.contactName, l.followUpDate, l.status, l.repEmail, l.notes || "—"])).join("");
+      htmlParts.push(tableWrap(["Company", "Contact", "Date", "Status", "Rep", "Notes"], rows, "#ecfdf5"));
     } else {
       htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No follow-ups scheduled in the next ${daysAhead} days.</p>`);
     }
-    textParts.push(`Upcoming Follow-ups:\n${opts.upcomingLeads.map((l) => `• ${l.companyName} — ${l.followUpDate} (${l.repEmail})`).join("\n") || "None"}`);
+    textParts.push(`Upcoming Follow-ups:\n${opts.upcomingLeads.map((l) => `• ${l.companyName} — ${l.followUpDate} (${l.repEmail})${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
   }
 
   // Overdue Leads
@@ -422,12 +422,12 @@ export async function sendSummaryEmail(opts: {
     htmlParts.push(sectionHeader("Overdue Follow-ups — Action Required", "#991b1b"));
     const items = opts.overdueLeads ?? [];
     if (items.length) {
-      const rows = items.map((l) => mkRow([l.companyName, l.contactName, l.followUpDate, l.status, l.repEmail])).join("");
-      htmlParts.push(tableWrap(["Company", "Contact", "Due Date", "Status", "Rep"], rows, "#fef2f2"));
+      const rows = items.map((l) => mkRow([l.companyName, l.contactName, l.followUpDate, l.status, l.repEmail, l.notes || "—"])).join("");
+      htmlParts.push(tableWrap(["Company", "Contact", "Due Date", "Status", "Rep", "Notes"], rows, "#fef2f2"));
     } else {
       htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No overdue follow-ups.</p>`);
     }
-    textParts.push(`Overdue Follow-ups:\n${items.map((l) => `• ${l.companyName} — ${l.followUpDate} (${l.repEmail})`).join("\n") || "None"}`);
+    textParts.push(`Overdue Follow-ups:\n${items.map((l) => `• ${l.companyName} — ${l.followUpDate} (${l.repEmail})${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
   }
 
   // Won Leads
@@ -435,12 +435,12 @@ export async function sendSummaryEmail(opts: {
     htmlParts.push(sectionHeader("Won / Closed Deals", "#065f46"));
     const items = opts.wonLeads ?? [];
     if (items.length) {
-      const rows = items.map((l) => mkRow([l.companyName, l.contactName, l.repEmail, l.updatedAt])).join("");
-      htmlParts.push(tableWrap(["Company", "Contact", "Rep", "Closed"], rows, "#ecfdf5"));
+      const rows = items.map((l) => mkRow([l.companyName, l.contactName, l.repEmail, l.updatedAt, l.notes || "—"])).join("");
+      htmlParts.push(tableWrap(["Company", "Contact", "Rep", "Closed", "Notes"], rows, "#ecfdf5"));
     } else {
       htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No won deals this period.</p>`);
     }
-    textParts.push(`Won Deals:\n${items.map((l) => `• ${l.companyName} (${l.repEmail})`).join("\n") || "None"}`);
+    textParts.push(`Won Deals:\n${items.map((l) => `• ${l.companyName} (${l.repEmail})${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
   }
 
   // Top Performers

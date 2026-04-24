@@ -213,7 +213,7 @@ export async function buildSummaryReportData(sections: ReportSection[]) {
   // Recent Activity
   queries.push(
     isEnabled("recent_activity")
-      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, status: leadsTable.status, repEmail: usersTable.email, updatedAt: leadsTable.createdAt })
+      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, status: leadsTable.status, repEmail: usersTable.email, updatedAt: leadsTable.createdAt, notes: leadsTable.notes })
           .from(leadsTable).innerJoin(usersTable, eq(leadsTable.userId, usersTable.id)).innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
           .where(gte(leadsTable.createdAt, since))
       : Promise.resolve([])
@@ -223,7 +223,7 @@ export async function buildSummaryReportData(sections: ReportSection[]) {
   // Upcoming Follow-ups
   queries.push(
     isEnabled("upcoming_followups")
-      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, followUpDate: leadsTable.followUpDate, status: leadsTable.status, repEmail: usersTable.email })
+      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, followUpDate: leadsTable.followUpDate, status: leadsTable.status, repEmail: usersTable.email, notes: leadsTable.notes })
           .from(leadsTable).innerJoin(usersTable, eq(leadsTable.userId, usersTable.id)).innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
           .where(and(gte(leadsTable.followUpDate, todayStr), lte(leadsTable.followUpDate, upcomingStr)))
       : Promise.resolve([])
@@ -233,7 +233,7 @@ export async function buildSummaryReportData(sections: ReportSection[]) {
   // Overdue
   queries.push(
     isEnabled("overdue_leads")
-      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, followUpDate: leadsTable.followUpDate, status: leadsTable.status, repEmail: usersTable.email })
+      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, followUpDate: leadsTable.followUpDate, status: leadsTable.status, repEmail: usersTable.email, notes: leadsTable.notes })
           .from(leadsTable).innerJoin(usersTable, eq(leadsTable.userId, usersTable.id)).innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
           .where(and(lt(leadsTable.followUpDate, todayStr), eq(leadsTable.isActive, true)))
       : Promise.resolve([])
@@ -243,7 +243,7 @@ export async function buildSummaryReportData(sections: ReportSection[]) {
   // Won Leads
   queries.push(
     isEnabled("won_leads")
-      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, status: leadsTable.status, repEmail: usersTable.email, updatedAt: leadsTable.createdAt })
+      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, status: leadsTable.status, repEmail: usersTable.email, updatedAt: leadsTable.createdAt, notes: leadsTable.notes })
           .from(leadsTable).innerJoin(usersTable, eq(leadsTable.userId, usersTable.id)).innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
           .where(and(eq(leadsTable.status, "Close Win"), gte(leadsTable.createdAt, since)))
       : Promise.resolve([])
