@@ -1,6 +1,7 @@
 import cron from "node-cron";
-import { db, reminderSettingsTable, leadsTable, usersTable, customersTable, userReminderPrefsTable } from "@workspace/db";
-import { eq, and, gte, lte, lt } from "drizzle-orm";
+import { db, reminderSettingsTable, leadsTable, usersTable, customersTable, userReminderPrefsTable, DEFAULT_REPORT_SECTIONS } from "@workspace/db";
+import type { ReportSection } from "@workspace/db";
+import { eq, and, gte, lte, lt, sql } from "drizzle-orm";
 import { sendFollowUpReminderEmail, sendSummaryEmail, sendPastDueReminderEmail } from "./mailer";
 import { logger } from "./logger";
 
@@ -186,6 +187,107 @@ export async function runPastDueReminders(): Promise<{ emailsSent: number; logs:
   return { emailsSent, logs };
 }
 
+export async function buildSummaryReportData(sections: ReportSection[]) {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+
+  const isEnabled = (id: string) => sections.find((s) => s.id === id)?.enabled ?? false;
+  const getSection = (id: string) => sections.find((s) => s.id === id);
+
+  const daysBack = getSection("recent_activity")?.daysBack ?? 7;
+  const daysAhead = getSection("upcoming_followups")?.daysAhead ?? 7;
+
+  const since = new Date(today);
+  since.setDate(since.getDate() - daysBack);
+  const upcomingDate = new Date(today);
+  upcomingDate.setDate(upcomingDate.getDate() + daysAhead);
+  const sinceStr = since.toISOString().slice(0, 10);
+  const upcomingStr = upcomingDate.toISOString().slice(0, 10);
+
+  const queries: Promise<any>[] = [];
+  const keys: string[] = [];
+
+  queries.push(db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name }).from(usersTable));
+  keys.push("allUsers");
+
+  // Recent Activity
+  queries.push(
+    isEnabled("recent_activity")
+      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, status: leadsTable.status, repEmail: usersTable.email, updatedAt: leadsTable.createdAt })
+          .from(leadsTable).innerJoin(usersTable, eq(leadsTable.userId, usersTable.id)).innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
+          .where(gte(leadsTable.createdAt, since))
+      : Promise.resolve([])
+  );
+  keys.push("recentLeads");
+
+  // Upcoming Follow-ups
+  queries.push(
+    isEnabled("upcoming_followups")
+      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, followUpDate: leadsTable.followUpDate, status: leadsTable.status, repEmail: usersTable.email })
+          .from(leadsTable).innerJoin(usersTable, eq(leadsTable.userId, usersTable.id)).innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
+          .where(and(gte(leadsTable.followUpDate, todayStr), lte(leadsTable.followUpDate, upcomingStr)))
+      : Promise.resolve([])
+  );
+  keys.push("upcomingLeads");
+
+  // Overdue
+  queries.push(
+    isEnabled("overdue_leads")
+      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, followUpDate: leadsTable.followUpDate, status: leadsTable.status, repEmail: usersTable.email })
+          .from(leadsTable).innerJoin(usersTable, eq(leadsTable.userId, usersTable.id)).innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
+          .where(and(lt(leadsTable.followUpDate, todayStr), eq(leadsTable.isActive, true)))
+      : Promise.resolve([])
+  );
+  keys.push("overdueLeads");
+
+  // Won Leads
+  queries.push(
+    isEnabled("won_leads")
+      ? db.select({ companyName: customersTable.companyName, contactName: customersTable.contactName, status: leadsTable.status, repEmail: usersTable.email, updatedAt: leadsTable.createdAt })
+          .from(leadsTable).innerJoin(usersTable, eq(leadsTable.userId, usersTable.id)).innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
+          .where(and(eq(leadsTable.status, "Close Win"), gte(leadsTable.createdAt, since)))
+      : Promise.resolve([])
+  );
+  keys.push("wonLeads");
+
+  // Pipeline counts
+  queries.push(
+    isEnabled("pipeline_summary")
+      ? db.select({ status: leadsTable.status, count: sql<number>`count(*)::int` }).from(leadsTable).where(eq(leadsTable.isActive, true)).groupBy(leadsTable.status)
+      : Promise.resolve([])
+  );
+  keys.push("pipelineCounts");
+
+  const results = await Promise.all(queries);
+  const data: Record<string, any[]> = {};
+  keys.forEach((k, i) => { data[k] = results[i]; });
+
+  // Top performers
+  let topPerformers: { repEmail: string; repName: string; count: number }[] = [];
+  if (isEnabled("top_performers") && data.allUsers.length) {
+    const repCounts = await db.select({ userId: leadsTable.userId, count: sql<number>`count(*)::int` })
+      .from(leadsTable).where(eq(leadsTable.isActive, true)).groupBy(leadsTable.userId);
+    topPerformers = repCounts
+      .filter((r) => r.userId)
+      .map((r) => {
+        const user = data.allUsers.find((u: any) => u.id === r.userId);
+        return { repEmail: user?.email ?? "?", repName: user?.name || user?.email?.split("@")[0] || "?", count: r.count };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }
+
+  return {
+    allUsers: data.allUsers as { id: string; email: string; name: string | null }[],
+    recentLeads: (data.recentLeads as any[]).map((l) => ({ ...l, updatedAt: l.updatedAt instanceof Date ? l.updatedAt.toISOString().slice(0, 10) : String(l.updatedAt).slice(0, 10) })),
+    upcomingLeads: (data.upcomingLeads as any[]).filter((l) => l.followUpDate !== null) as any[],
+    overdueLeads: (data.overdueLeads as any[]).filter((l) => l.followUpDate !== null) as any[],
+    wonLeads: (data.wonLeads as any[]).map((l) => ({ ...l, updatedAt: l.updatedAt instanceof Date ? l.updatedAt.toISOString().slice(0, 10) : String(l.updatedAt).slice(0, 10) })),
+    pipelineCounts: data.pipelineCounts as { status: string; count: number }[],
+    topPerformers,
+  };
+}
+
 export async function runSummaryEmails(): Promise<{ emailsSent: number; logs: string[] }> {
   const logs: string[] = [];
   const settings = await getSettings();
@@ -203,61 +305,26 @@ export async function runSummaryEmails(): Promise<{ emailsSent: number; logs: st
   const dayOfWeek = today.getDay();
   const periodLabel = dayOfWeek === 1 ? "Monday" : "Friday";
 
-  const since = new Date(today);
-  since.setDate(since.getDate() - 7);
+  const sections: ReportSection[] = (settings.reportSections as ReportSection[] | null) ?? DEFAULT_REPORT_SECTIONS;
 
-  const upcoming = new Date(today);
-  upcoming.setDate(upcoming.getDate() + 7);
+  const data = await buildSummaryReportData(sections);
 
-  const todayStr = today.toISOString().slice(0, 10);
-  const sinceStr = since.toISOString().slice(0, 10);
-  const upcomingStr = upcoming.toISOString().slice(0, 10);
-
-  const [recentLeads, upcomingLeads, allUsers] = await Promise.all([
-    db
-      .select({
-        companyName: customersTable.companyName,
-        contactName: customersTable.contactName,
-        status: leadsTable.status,
-        repEmail: usersTable.email,
-        updatedAt: leadsTable.createdAt,
-      })
-      .from(leadsTable)
-      .innerJoin(usersTable, eq(leadsTable.userId, usersTable.id))
-      .innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
-      .where(gte(leadsTable.createdAt, since)),
-    db
-      .select({
-        companyName: customersTable.companyName,
-        contactName: customersTable.contactName,
-        followUpDate: leadsTable.followUpDate,
-        status: leadsTable.status,
-        repEmail: usersTable.email,
-      })
-      .from(leadsTable)
-      .innerJoin(usersTable, eq(leadsTable.userId, usersTable.id))
-      .innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
-      .where(
-        and(
-          gte(leadsTable.followUpDate, todayStr),
-          lte(leadsTable.followUpDate, upcomingStr)
-        )
-      ),
-    db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable),
-  ]);
-
-  logs.push(`Sending ${periodLabel} summary to ${allUsers.length} user(s) — ${recentLeads.length} recent, ${upcomingLeads.length} upcoming`);
+  logs.push(`Sending ${periodLabel} summary to ${data.allUsers.length} user(s) — ${data.recentLeads.length} recent, ${data.upcomingLeads.length} upcoming`);
 
   let emailsSent = 0;
-  for (const user of allUsers) {
-    const recipientName = user.email.split("@")[0];
+  for (const user of data.allUsers) {
+    const recipientName = user.name || user.email.split("@")[0];
     const result = await sendSummaryEmail({
       toEmail: user.email,
       recipientName,
       periodLabel: `${periodLabel} Morning`,
-      recentLeads: recentLeads.map((l) => ({ ...l, updatedAt: l.updatedAt.toISOString().slice(0, 10) })),
-      upcomingLeads: upcomingLeads
-        .filter((l): l is typeof l & { followUpDate: string } => l.followUpDate !== null),
+      sections,
+      recentLeads: data.recentLeads,
+      upcomingLeads: data.upcomingLeads,
+      overdueLeads: data.overdueLeads,
+      wonLeads: data.wonLeads,
+      pipelineCounts: data.pipelineCounts,
+      topPerformers: data.topPerformers,
     });
     logs.push(`${result.sent ? "✓ Sent" : "○ Logged"} ${periodLabel} summary to ${user.email}`);
     if (result.sent) emailsSent++;

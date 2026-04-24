@@ -20,6 +20,7 @@ import {
   BookOpen,
   Bug,
   Mail,
+  BarChart2,
 } from "lucide-react";
 import { BugReportModal } from "@/components/BugReportModal";
 
@@ -38,6 +39,7 @@ const adminItems = [
   { label: "Manage Users", icon: Users, href: "/admin/users" },
   { label: "Reminders", icon: Bell, href: "/admin/reminders" },
   { label: "Reports", icon: FileText, href: "/admin/reports" },
+  { label: "Report Builder", icon: BarChart2, href: "/admin/report-builder" },
   { label: "Bug Reports", icon: Bug, href: "/admin/bug-reports" },
   { label: "Email Log", icon: Mail, href: "/admin/email-logs" },
 ];

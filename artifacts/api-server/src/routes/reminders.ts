@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { db, reminderSettingsTable, leadsTable, usersTable, customersTable } from "@workspace/db";
+import { db, reminderSettingsTable, leadsTable, usersTable, customersTable, DEFAULT_REPORT_SECTIONS } from "@workspace/db";
+import type { ReportSection } from "@workspace/db";
 import { eq, and, gte, lte, lt } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
-import { runFollowUpReminders, runSummaryEmails, runPastDueReminders } from "../lib/scheduler";
+import { runFollowUpReminders, runSummaryEmails, runPastDueReminders, buildSummaryReportData } from "../lib/scheduler";
 import { sendFollowUpReminderEmail, sendPastDueReminderEmail, sendSummaryEmail } from "../lib/mailer";
 
 const router = Router();
@@ -23,7 +24,7 @@ router.get("/admin/reminders", requireAdmin, async (_req, res) => {
 });
 
 router.put("/admin/reminders", requireAdmin, async (req, res) => {
-  const { followUpReminderEnabled, followUpDaysBefore, summaryEnabled, pastDueReminderEnabled } = req.body;
+  const { followUpReminderEnabled, followUpDaysBefore, summaryEnabled, pastDueReminderEnabled, reportSections } = req.body;
 
   await ensureSettings();
 
@@ -34,12 +35,40 @@ router.put("/admin/reminders", requireAdmin, async (req, res) => {
       ...(followUpDaysBefore !== undefined && { followUpDaysBefore }),
       ...(summaryEnabled !== undefined && { summaryEnabled }),
       ...(pastDueReminderEnabled !== undefined && { pastDueReminderEnabled }),
+      ...(reportSections !== undefined && { reportSections }),
       updatedAt: new Date(),
     })
     .where(eq(reminderSettingsTable.id, 1))
     .returning();
 
   res.json(updated[0]);
+});
+
+router.get("/admin/reminders/report-sections", requireAdmin, async (_req, res) => {
+  const settings = await ensureSettings();
+  res.json((settings as any).reportSections ?? DEFAULT_REPORT_SECTIONS);
+});
+
+router.post("/admin/reminders/preview-report", requireAdmin, async (req, res) => {
+  const { toEmail, sections } = req.body as { toEmail: string; sections: ReportSection[] };
+  if (!toEmail) return res.status(400).json({ error: "toEmail is required" });
+
+  const activeSections: ReportSection[] = sections ?? DEFAULT_REPORT_SECTIONS;
+  const data = await buildSummaryReportData(activeSections);
+
+  const result = await sendSummaryEmail({
+    toEmail,
+    recipientName: toEmail.split("@")[0],
+    periodLabel: "Preview",
+    sections: activeSections,
+    recentLeads: data.recentLeads,
+    upcomingLeads: data.upcomingLeads,
+    overdueLeads: data.overdueLeads,
+    wonLeads: data.wonLeads,
+    pipelineCounts: data.pipelineCounts,
+    topPerformers: data.topPerformers,
+  });
+  return res.json(result);
 });
 
 router.post("/admin/reminders/send-followup", requireAdmin, async (_req, res) => {

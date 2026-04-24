@@ -23,6 +23,7 @@ import AdminUsersPage from "@/pages/admin-users";
 import AdminUserEditPage from "@/pages/admin-user-edit";
 import AdminRemindersPage from "@/pages/admin-reminders";
 import AdminReportsPage from "@/pages/admin-reports";
+import AdminReportBuilderPage from "@/pages/admin-report-builder";
 import AdminBugReportsPage from "@/pages/admin-bug-reports";
 import AdminEmailLogsPage from "@/pages/admin-email-logs";
 import SettingsPage from "@/pages/settings";
@@ -158,6 +159,10 @@ function AppRouter() {
 
         <Route path="/admin/reports">
           <ProtectedRoute component={AdminReportsPage} adminOnly />
+        </Route>
+
+        <Route path="/admin/report-builder">
+          <ProtectedRoute component={AdminReportBuilderPage} adminOnly />
         </Route>
 
         <Route path="/admin/bug-reports">

@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { logger } from "./logger";
 import { db, appSettingsTable, emailLogsTable } from "@workspace/db";
+import type { ReportSection } from "@workspace/db";
 
 const ACCENT_HEX: Record<string, { bg: string; text: string }> = {
   amber:  { bg: "#f59e0b", text: "#1c1917" },
@@ -335,8 +336,13 @@ export async function sendSummaryEmail(opts: {
   toEmail: string;
   recipientName: string;
   periodLabel: string;
+  sections?: ReportSection[];
   recentLeads: Array<{ companyName: string; contactName: string; status: string; repEmail: string; updatedAt: string }>;
   upcomingLeads: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string }>;
+  overdueLeads?: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string }>;
+  wonLeads?: Array<{ companyName: string; contactName: string; status: string; repEmail: string; updatedAt: string }>;
+  pipelineCounts?: Array<{ status: string; count: number }>;
+  topPerformers?: Array<{ repEmail: string; repName: string; count: number }>;
 }): Promise<{ sent: boolean; message: string }> {
   const settings = await getAllSettings();
   const { companyName, accentBg, accentText } = getEmailBranding(settings);
@@ -344,51 +350,132 @@ export async function sendSummaryEmail(opts: {
   const subject = `${companyName} — ${opts.periodLabel} Activity Summary`;
 
   function mkRow(cells: string[]) {
-    return `<tr style="border-bottom:1px solid #e5e7eb">${cells.map((c) => `<td style="padding:9px 12px;font-size:13px">${c}</td>`).join("")}</tr>`;
+    return `<tr style="border-bottom:1px solid #e5e7eb">${cells.map((c) => `<td style="padding:9px 12px;font-size:13px">${c ?? "—"}</td>`).join("")}</tr>`;
   }
 
-  const recentSection = opts.recentLeads.length
-    ? `<h3 style="font-size:14px;color:#374151;margin:20px 0 8px">Recent Activity</h3>
-       <table style="width:100%;border-collapse:collapse">
-         <thead><tr style="background:#f9fafb;text-align:left">
-           <th style="padding:9px 12px;font-size:12px;color:#6b7280">Company</th>
-           <th style="padding:9px 12px;font-size:12px;color:#6b7280">Contact</th>
-           <th style="padding:9px 12px;font-size:12px;color:#6b7280">Status</th>
-           <th style="padding:9px 12px;font-size:12px;color:#6b7280">Rep</th>
-         </thead><tbody>
-         ${opts.recentLeads.map((l) => mkRow([l.companyName, l.contactName, l.status, l.repEmail])).join("")}
-         </tbody></table>`
-    : `<p style="color:#9ca3af;font-size:13px">No recent activity this period.</p>`;
+  function sectionHeader(title: string, color = "#374151") {
+    return `<h3 style="font-size:14px;font-weight:700;color:${color};margin:24px 0 8px;padding-bottom:6px;border-bottom:1px solid #e5e7eb">${title}</h3>`;
+  }
 
-  const upcomingSection = opts.upcomingLeads.length
-    ? `<h3 style="font-size:14px;color:#374151;margin:20px 0 8px">Upcoming Follow-ups (next 7 days)</h3>
-       <table style="width:100%;border-collapse:collapse">
-         <thead><tr style="background:#f9fafb;text-align:left">
-           <th style="padding:9px 12px;font-size:12px;color:#6b7280">Company</th>
-           <th style="padding:9px 12px;font-size:12px;color:#6b7280">Contact</th>
-           <th style="padding:9px 12px;font-size:12px;color:#6b7280">Date</th>
-           <th style="padding:9px 12px;font-size:12px;color:#6b7280">Status</th>
-           <th style="padding:9px 12px;font-size:12px;color:#6b7280">Rep</th>
-         </thead><tbody>
-         ${opts.upcomingLeads.map((l) => mkRow([l.companyName, l.contactName, l.followUpDate, l.status, l.repEmail])).join("")}
-         </tbody></table>`
-    : `<p style="color:#9ca3af;font-size:13px">No follow-ups scheduled in the next 7 days.</p>`;
+  function tableWrap(headCells: string[], rows: string, bgColor = "#f9fafb") {
+    const ths = headCells.map((h) => `<th style="padding:9px 12px;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px">${h}</th>`).join("");
+    return `<table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden">
+      <thead><tr style="background:${bgColor};text-align:left">${ths}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  const isEnabled = (id: string) => {
+    if (!opts.sections) return id === "recent_activity" || id === "upcoming_followups";
+    const sec = opts.sections.find((s) => s.id === id);
+    return sec?.enabled ?? false;
+  };
+
+  const getSection = (id: string) => opts.sections?.find((s) => s.id === id);
+
+  const htmlParts: string[] = [];
+  const textParts: string[] = [];
+
+  // Pipeline Summary
+  if (isEnabled("pipeline_summary") && opts.pipelineCounts?.length) {
+    htmlParts.push(sectionHeader("Pipeline Overview", "#1e40af"));
+    const rows = opts.pipelineCounts.map((p) =>
+      `<tr style="border-bottom:1px solid #e5e7eb">
+        <td style="padding:9px 12px;font-size:13px">${p.status}</td>
+        <td style="padding:9px 12px;font-size:13px;font-weight:700;text-align:right">${p.count}</td>
+      </tr>`
+    ).join("");
+    htmlParts.push(tableWrap(["Status", "Leads"], rows, "#eff6ff"));
+    textParts.push(`Pipeline Overview:\n${opts.pipelineCounts.map((p) => `• ${p.status}: ${p.count}`).join("\n")}`);
+  }
+
+  // Recent Activity
+  if (isEnabled("recent_activity")) {
+    const sec = getSection("recent_activity");
+    const daysBack = sec?.daysBack ?? 7;
+    htmlParts.push(sectionHeader(`Recent Activity (last ${daysBack} days)`));
+    if (opts.recentLeads.length) {
+      const rows = opts.recentLeads.map((l) => mkRow([l.companyName, l.contactName, l.status, l.repEmail])).join("");
+      htmlParts.push(tableWrap(["Company", "Contact", "Status", "Rep"], rows));
+    } else {
+      htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No recent activity this period.</p>`);
+    }
+    textParts.push(`Recent Activity:\n${opts.recentLeads.map((l) => `• ${l.companyName} — ${l.status} (${l.repEmail})`).join("\n") || "None"}`);
+  }
+
+  // Upcoming Follow-ups
+  if (isEnabled("upcoming_followups")) {
+    const sec = getSection("upcoming_followups");
+    const daysAhead = sec?.daysAhead ?? 7;
+    htmlParts.push(sectionHeader(`Upcoming Follow-ups (next ${daysAhead} days)`, "#065f46"));
+    if (opts.upcomingLeads.length) {
+      const rows = opts.upcomingLeads.map((l) => mkRow([l.companyName, l.contactName, l.followUpDate, l.status, l.repEmail])).join("");
+      htmlParts.push(tableWrap(["Company", "Contact", "Date", "Status", "Rep"], rows, "#ecfdf5"));
+    } else {
+      htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No follow-ups scheduled in the next ${daysAhead} days.</p>`);
+    }
+    textParts.push(`Upcoming Follow-ups:\n${opts.upcomingLeads.map((l) => `• ${l.companyName} — ${l.followUpDate} (${l.repEmail})`).join("\n") || "None"}`);
+  }
+
+  // Overdue Leads
+  if (isEnabled("overdue_leads")) {
+    htmlParts.push(sectionHeader("Overdue Follow-ups — Action Required", "#991b1b"));
+    const items = opts.overdueLeads ?? [];
+    if (items.length) {
+      const rows = items.map((l) => mkRow([l.companyName, l.contactName, l.followUpDate, l.status, l.repEmail])).join("");
+      htmlParts.push(tableWrap(["Company", "Contact", "Due Date", "Status", "Rep"], rows, "#fef2f2"));
+    } else {
+      htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No overdue follow-ups.</p>`);
+    }
+    textParts.push(`Overdue Follow-ups:\n${items.map((l) => `• ${l.companyName} — ${l.followUpDate} (${l.repEmail})`).join("\n") || "None"}`);
+  }
+
+  // Won Leads
+  if (isEnabled("won_leads")) {
+    htmlParts.push(sectionHeader("Won / Closed Deals", "#065f46"));
+    const items = opts.wonLeads ?? [];
+    if (items.length) {
+      const rows = items.map((l) => mkRow([l.companyName, l.contactName, l.repEmail, l.updatedAt])).join("");
+      htmlParts.push(tableWrap(["Company", "Contact", "Rep", "Closed"], rows, "#ecfdf5"));
+    } else {
+      htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No won deals this period.</p>`);
+    }
+    textParts.push(`Won Deals:\n${items.map((l) => `• ${l.companyName} (${l.repEmail})`).join("\n") || "None"}`);
+  }
+
+  // Top Performers
+  if (isEnabled("top_performers")) {
+    htmlParts.push(sectionHeader("Top Performers", "#5b21b6"));
+    const items = opts.topPerformers ?? [];
+    if (items.length) {
+      const rows = items.map((p, i) =>
+        `<tr style="border-bottom:1px solid #e5e7eb">
+          <td style="padding:9px 12px;font-size:13px;color:#7c3aed;font-weight:700">#${i + 1}</td>
+          <td style="padding:9px 12px;font-size:13px">${p.repName}</td>
+          <td style="padding:9px 12px;font-size:13px;color:#6b7280">${p.repEmail}</td>
+          <td style="padding:9px 12px;font-size:13px;font-weight:700;text-align:right">${p.count}</td>
+        </tr>`
+      ).join("");
+      htmlParts.push(tableWrap(["Rank", "Name", "Email", "Leads"], rows, "#f5f3ff"));
+    } else {
+      htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No activity data available.</p>`);
+    }
+    textParts.push(`Top Performers:\n${items.map((p, i) => `#${i + 1} ${p.repName} — ${p.count} leads`).join("\n") || "None"}`);
+  }
 
   const html = `
     <div style="font-family:sans-serif;max-width:640px;margin:0 auto;color:#1f2937">
       ${emailHeader(companyName, accentBg, accentText, `${opts.periodLabel} Activity Summary`)}
       <div style="background:#fff;border:1px solid #e5e7eb;padding:24px">
         <p style="margin:0 0 4px">Hi <strong>${opts.recipientName}</strong>,</p>
-        <p style="margin:0 0 16px;color:#6b7280;font-size:13px">Here's your sales activity overview.</p>
-        ${recentSection}
-        ${upcomingSection}
+        <p style="margin:0 0 20px;color:#6b7280;font-size:13px">Here's your sales activity overview.</p>
+        ${htmlParts.join("\n") || `<p style="color:#9ca3af;font-size:13px">No sections configured for this report.</p>`}
       </div>
       ${emailFooter(companyName)}
     </div>`;
 
   const text = `${companyName} ${opts.periodLabel} Summary for ${opts.recipientName}\n\n` +
-    `Recent Activity:\n${opts.recentLeads.map((l) => `• ${l.companyName} — ${l.status} (${l.repEmail})`).join("\n") || "None"}\n\n` +
-    `Upcoming Follow-ups:\n${opts.upcomingLeads.map((l) => `• ${l.companyName} — ${l.followUpDate} (${l.repEmail})`).join("\n") || "None"}`;
+    (textParts.join("\n\n") || "No sections configured.");
 
   return deliver(opts.toEmail, subject, html, text, "summary");
 }
