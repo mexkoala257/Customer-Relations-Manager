@@ -13,7 +13,6 @@ import {
   Calendar,
   Building2,
   CheckCircle,
-  PlusCircle,
   MapPin,
   ArrowRight,
   Target,
@@ -178,14 +177,6 @@ export default function DashboardPage() {
               Welcome back, {userEmail?.split("@")[0]}
             </p>
           </div>
-          <Link
-            href="/leads/new"
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition"
-            data-testid="new-lead-button"
-          >
-            <PlusCircle className="w-4 h-4" />
-            New Lead
-          </Link>
         </div>
 
         {/* Stats Grid */}
