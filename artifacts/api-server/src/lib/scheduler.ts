@@ -207,7 +207,7 @@ export async function buildSummaryReportData(sections: ReportSection[]) {
   const queries: Promise<any>[] = [];
   const keys: string[] = [];
 
-  queries.push(db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name }).from(usersTable));
+  queries.push(db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.fullName }).from(usersTable));
   keys.push("allUsers");
 
   // Recent Activity
