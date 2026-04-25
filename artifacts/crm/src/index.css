@@ -308,16 +308,25 @@
     min-height: 0 !important;
   }
 
-  /* ── Strip scroll/height constraints from every layout wrapper ─────── */
+  /* ── Strip scroll/height/flex constraints from every layout wrapper ── */
   #root,
   #root > div,
   #root > div > div,
-  main {
+  #root > div > div > div {
+    display: block !important;
     overflow: visible !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
-    flex: none !important;
+    width: 100% !important;
+  }
+
+  main {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
   }
 
   /* ── Reset layout wrappers ────────────────────────────────────────── */
