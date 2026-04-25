@@ -41,6 +41,7 @@ function buildLeadSelect() {
     user: {
       id: usersTable.id,
       email: usersTable.email,
+      fullName: usersTable.fullName,
       staffId: usersTable.staffId,
       role: usersTable.role,
     },
@@ -386,13 +387,15 @@ router.post("/leads/:id/send-followup", requireAuth, async (req, res): Promise<v
     return;
   }
 
+  const repEmail = lead.user?.email ?? "";
+  const repFullName = lead.user?.fullName?.trim() ?? "";
+  const repFirstName = repFullName ? repFullName.split(/\s+/)[0] : repEmail.split("@")[0];
+
   const result = await sendFollowUpEmail({
-    toEmail: lead.customer?.contactName
-      ? `${lead.customer.contactName.toLowerCase().replace(/\s+/g, ".")}@example.com`
-      : "customer@example.com",
-    toName: lead.customer?.contactName ?? "Customer",
+    toEmail: repEmail,
+    toName: repFirstName,
     companyName: lead.customer?.companyName ?? "Company",
-    repName: lead.user?.email ?? "Sales Rep",
+    repName: repFirstName,
     notes: lead.notes,
     followUpDate: lead.followUpDate,
   });
