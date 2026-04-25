@@ -302,6 +302,22 @@
     font-family: "Helvetica Neue", Arial, sans-serif !important;
     color: #111 !important;
     line-height: 1.3 !important;
+    /* Remove all scroll constraints so no scrollbar renders in PDF */
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  /* ── Strip scroll/height constraints from every layout wrapper ─────── */
+  #root,
+  #root > div,
+  #root > div > div,
+  main {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    flex: none !important;
   }
 
   /* ── Reset layout wrappers ────────────────────────────────────────── */
