@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   MessageSquare, Zap, ImageIcon, FileText, Video,
   Send, Trash2, Loader2, Upload, X, FileDown, Link2, Copy, Check, Play, Monitor,
+  Mail, Inbox, ChevronDown,
 } from "lucide-react";
 
 const API = (path: string) => `/api/team/${path}`;
@@ -808,9 +809,242 @@ function VideosTab({ userId, isAdmin }: { userId: string; isAdmin: boolean }) {
   );
 }
 
+// ── Direct Messages Tab ───────────────────────────────────────────────────────
+
+interface DMMessage {
+  id: number;
+  body: string;
+  createdAt: string;
+  firstViewedAt: string | null;
+  fromName?: string | null;
+  fromEmail?: string;
+  toName?: string | null;
+  toEmail?: string;
+}
+
+interface DMRecipient {
+  id: string;
+  fullName: string | null;
+  email: string;
+  role: string;
+}
+
+function dmSenderLabel(m: DMMessage) {
+  const name = m.fromName?.trim() || m.fromEmail || "";
+  return name ? name.split(/\s+/)[0] : "Unknown";
+}
+function dmRecipientLabel(m: DMMessage) {
+  const name = m.toName?.trim() || m.toEmail || "";
+  return name ? name.split(/\s+/)[0] : "Unknown";
+}
+function recipientLabel(r: DMRecipient) {
+  return r.fullName?.trim() || r.email;
+}
+function dmTime(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffH = (now.getTime() - d.getTime()) / 3600000;
+  if (diffH < 24) return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function DirectMessagesTab() {
+  const { toast } = useToast();
+  const [view, setView] = useState<"inbox" | "sent">("inbox");
+  const [inbox, setInbox] = useState<DMMessage[]>([]);
+  const [sent, setSent] = useState<DMMessage[]>([]);
+  const [recipients, setRecipients] = useState<DMRecipient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [toUserId, setToUserId] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+
+  function auth() { return { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" }; }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [inboxRes, sentRes, recipRes] = await Promise.all([
+        fetch("/api/dm/inbox", { headers: auth() }),
+        fetch("/api/dm/sent", { headers: auth() }),
+        fetch("/api/dm/recipients", { headers: auth() }),
+      ]);
+      setInbox(await inboxRes.json());
+      setSent(await sentRes.json());
+      setRecipients(await recipRes.json());
+    } catch {
+      toast({ title: "Failed to load messages", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const unread = inbox.filter((m) => !m.firstViewedAt);
+    if (unread.length === 0) return;
+    fetch("/api/dm/mark-viewed", { method: "POST", headers: auth() }).then(load).catch(() => {});
+  }, [inbox]);
+
+  async function handleSend() {
+    if (!toUserId || !body.trim()) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/dm", {
+        method: "POST",
+        headers: auth(),
+        body: JSON.stringify({ toUserId, body: body.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast({ title: err.error ?? "Failed to send", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Message sent" });
+      setBody("");
+      setToUserId("");
+      setView("sent");
+      load();
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const unreadCount = inbox.filter((m) => !m.firstViewedAt).length;
+
+  return (
+    <div className="space-y-6">
+      {/* Compose */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <Mail className="w-4 h-4 text-accent" />
+          <h3 className="font-semibold text-sm">Send a Direct Message</h3>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">To</label>
+            <div className="relative">
+              <select
+                value={toUserId}
+                onChange={(e) => setToUserId(e.target.value)}
+                className="w-full appearance-none bg-background border border-border rounded-lg px-3 py-2 text-sm pr-8 focus:outline-none focus:ring-2 focus:ring-accent/30"
+                data-testid="dm-recipient-select"
+              >
+                <option value="">Select a teammate…</option>
+                {recipients.map((r) => (
+                  <option key={r.id} value={r.id}>{recipientLabel(r)}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Message</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              maxLength={500}
+              rows={2}
+              placeholder="Keep it short and sweet…"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/30"
+              data-testid="dm-body-input"
+            />
+            <div className="text-right text-xs text-muted-foreground mt-1">{body.length}/500</div>
+          </div>
+          <button
+            onClick={handleSend}
+            disabled={sending || !toUserId || !body.trim()}
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-40"
+            data-testid="dm-send-btn"
+          >
+            {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            Send Message
+          </button>
+        </div>
+      </div>
+
+      {/* Inbox / Sent toggle */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="flex border-b border-border">
+          <button
+            onClick={() => setView("inbox")}
+            className={cn("flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-colors",
+              view === "inbox" ? "border-accent text-accent" : "border-transparent text-muted-foreground hover:text-foreground")}
+            data-testid="dm-inbox-tab"
+          >
+            <Inbox className="w-4 h-4" />
+            Inbox
+            {unreadCount > 0 && (
+              <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none font-semibold">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setView("sent")}
+            className={cn("flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-colors",
+              view === "sent" ? "border-accent text-accent" : "border-transparent text-muted-foreground hover:text-foreground")}
+            data-testid="dm-sent-tab"
+          >
+            <Send className="w-4 h-4" />
+            Sent
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : view === "inbox" ? (
+          inbox.length === 0 ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">No messages in your inbox</div>
+          ) : (
+            <div className="divide-y divide-border">
+              {inbox.map((msg) => (
+                <div key={msg.id} className="px-5 py-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold text-foreground">{dmSenderLabel(msg)}</span>
+                    <span className="text-xs text-muted-foreground">{dmTime(msg.createdAt)}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{msg.body}</p>
+                  {!msg.firstViewedAt && (
+                    <span className="inline-block mt-1.5 text-xs font-medium text-accent">New</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          sent.length === 0 ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">No sent messages</div>
+          ) : (
+            <div className="divide-y divide-border">
+              {sent.map((msg) => (
+                <div key={msg.id} className="px-5 py-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold text-foreground">To: {dmRecipientLabel(msg)}</span>
+                    <span className="text-xs text-muted-foreground">{dmTime(msg.createdAt)}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{msg.body}</p>
+                  {msg.firstViewedAt && (
+                    <span className="text-xs text-muted-foreground mt-1 block">
+                      Seen · expires {new Date(new Date(msg.firstViewedAt).getTime() + 5 * 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-type Tab = "messages" | "updates" | "photos" | "documents" | "videos";
+type Tab = "messages" | "updates" | "photos" | "documents" | "videos" | "direct";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "messages", label: "Messages", icon: MessageSquare },
@@ -818,6 +1052,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "photos", label: "Photos", icon: ImageIcon },
   { id: "documents", label: "Documents", icon: FileText },
   { id: "videos", label: "Videos", icon: Video },
+  { id: "direct", label: "Direct Messages", icon: Mail },
 ];
 
 export default function TeamPage() {
@@ -859,6 +1094,7 @@ export default function TeamPage() {
         {tab === "photos" && <PhotosTab userId={uid} isAdmin={isAdmin} />}
         {tab === "documents" && <DocumentsTab userId={uid} isAdmin={isAdmin} />}
         {tab === "videos" && <VideosTab userId={uid} isAdmin={isAdmin} />}
+        {tab === "direct" && <DirectMessagesTab />}
       </div>
     </AppLayout>
   );

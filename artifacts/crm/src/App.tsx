@@ -7,6 +7,7 @@ import { getToken } from "@/lib/api";
 import { AppSettingsProvider } from "@/contexts/app-settings";
 import { BrandingEditor } from "@/components/branding-editor";
 import { ForcePasswordModal } from "@/components/force-password-modal";
+import { DirectMessageModal } from "@/components/DirectMessageModal";
 import { useEffect, useState } from "react";
 
 import LoginPage from "@/pages/login";
@@ -106,6 +107,7 @@ function AppRouter() {
   return (
     <SetupGuard>
       {isAuthenticated && mustChangePassword && <ForcePasswordModal />}
+      {isAuthenticated && <DirectMessageModal />}
       <Switch>
         <Route path="/setup" component={SetupPage} />
 

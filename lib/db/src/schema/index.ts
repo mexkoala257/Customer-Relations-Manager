@@ -9,3 +9,4 @@ export * from "./user-reminder-prefs";
 export * from "./bug-reports";
 export * from "./watchers";
 export * from "./email-logs";
+export * from "./direct-messages";

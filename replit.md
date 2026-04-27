@@ -4,6 +4,18 @@
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
+## Features (Completed)
+
+- JWT auth (superadmin/admin/sales/data-entry roles), force password change, locked accounts
+- Lead pipeline with full CRUD, notes, attachments, follow-up emails
+- Customer profiles with account notes and watcher/subscription system
+- Admin panel: user management, reminder settings, report builder (6 toggleable sections), bug reports, email log
+- Team portal: group messages, quick updates, photos, documents, videos, **Direct Messages**
+- **Direct Messages**: inbox (5-day expiry after first view), sent, compose; sidebar unread badge (60s polling); startup modal for new messages
+- Dashboard with clickable stat cards, pipeline legend links, and weekly goal tracking
+- Weekly email reports with per-rep lead notes and rep first-name display
+- Print/PDF report generation
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces

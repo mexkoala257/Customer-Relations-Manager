@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings } from "@/contexts/app-settings";
+import { getToken } from "@/lib/api";
 import {
   LayoutDashboard,
   Users,
@@ -44,11 +45,34 @@ const adminItems = [
   { label: "Email Log", icon: Mail, href: "/admin/email-logs" },
 ];
 
+function useDmUnreadCount() {
+  const [count, setCount] = useState(0);
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    function fetch_count() {
+      const token = getToken();
+      if (!token) return;
+      fetch("/api/dm/unread-count", { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => r.json())
+        .then((d) => setCount(d.count ?? 0))
+        .catch(() => {});
+    }
+    fetch_count();
+    const id = setInterval(fetch_count, 60000);
+    return () => clearInterval(id);
+  }, [isAuthenticated]);
+
+  return count;
+}
+
 export function Sidebar({ onClose }: { onClose?: () => void }) {
   const [location] = useLocation();
   const { userEmail, userRole, staffId, logout } = useAuth();
   const { settings } = useAppSettings();
   const [showBugReport, setShowBugReport] = useState(false);
+  const dmUnread = useDmUnreadCount();
 
   function isActive(href: string) {
     if (href === "/") return location === "/";
@@ -96,6 +120,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
 
         {navItems.map((item) => {
           const active = isActive(item.href);
+          const showDot = item.href === "/team" && dmUnread > 0;
           return (
             <Link
               key={item.href}
@@ -109,8 +134,18 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
               )}
               data-testid={`nav-admin-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
             >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
+              <div className="relative flex-shrink-0">
+                <item.icon className="w-4 h-4" />
+                {showDot && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 ring-1 ring-sidebar" />
+                )}
+              </div>
               <span>{item.label}</span>
+              {showDot && !active && (
+                <span className="ml-auto text-xs font-semibold bg-red-500 text-white rounded-full px-1.5 py-0.5 leading-none">
+                  {dmUnread}
+                </span>
+              )}
               {active && <ChevronRight className="w-3 h-3 ml-auto opacity-50" />}
             </Link>
           );
