@@ -12,7 +12,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Admin panel: user management, reminder settings, report builder (6 toggleable sections), bug reports, email log
 - Team portal: group messages, quick updates, photos, documents, videos, **Direct Messages**
 - **Direct Messages**: inbox (5-day expiry after first view), sent, compose; sidebar unread badge (60s polling); startup modal for new messages
-- **Price Lookup Tool**: parts catalog with Retail/Xstore/Tier 1 prices; AI-assisted PDF import with description enrichment (Interstate Batteries); Price Update mode with diff view; per-account tier assignment + custom price overrides; `/parts`, `/parts/import`, `/admin/categories` pages
+- **Price Lookup Tool**: parts catalog with Retail/Xstore/Tier 1 prices; AI-assisted PDF import with description enrichment (Interstate Batteries); Price Update mode with diff view; per-account tier assignment + custom price overrides; `/parts`, `/parts/import`, `/admin/categories`, `/admin/parts` pages
+- **Admin Parts Catalog** (`/admin/parts`): full CRUD table — inline row editing, New Part form, category assignment dropdown, price editing, active/inactive toggle, delete with confirmation
 - Dashboard with clickable stat cards, pipeline legend links, and weekly goal tracking
 - Weekly email reports with per-rep lead notes and rep first-name display
 - Print/PDF report generation

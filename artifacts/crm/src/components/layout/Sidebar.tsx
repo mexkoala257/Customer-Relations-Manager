@@ -41,6 +41,7 @@ const navItems = [
 
 const adminItems = [
   { label: "Manage Users", icon: Users, href: "/admin/users" },
+  { label: "Parts Catalog", icon: Package, href: "/admin/parts" },
   { label: "Categories", icon: Tag, href: "/admin/categories" },
   { label: "Reminders", icon: Bell, href: "/admin/reminders" },
   { label: "Reports", icon: FileText, href: "/admin/reports" },

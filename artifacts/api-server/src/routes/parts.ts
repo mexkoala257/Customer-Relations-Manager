@@ -122,6 +122,13 @@ router.post("/parts/:id/toggle-active", requireAdmin, async (req, res) => {
   return res.json(row);
 });
 
+router.delete("/parts/:id", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  const [deleted] = await db.delete(partsTable).where(eq(partsTable.id, id)).returning();
+  if (!deleted) return res.status(404).json({ error: "Not found" });
+  return res.json({ ok: true });
+});
+
 router.post("/parts/bulk", requireAdmin, async (req, res) => {
   const { parts } = req.body as {
     parts: {

@@ -36,6 +36,7 @@ import NotFound from "@/pages/not-found";
 import PartsPage from "@/pages/parts";
 import PartsImportPage from "@/pages/parts-import";
 import AdminCategoriesPage from "@/pages/admin-categories";
+import AdminPartsPage from "@/pages/admin-parts";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -176,6 +177,10 @@ function AppRouter() {
 
         <Route path="/admin/email-logs">
           <ProtectedRoute component={AdminEmailLogsPage} adminOnly />
+        </Route>
+
+        <Route path="/admin/parts">
+          <ProtectedRoute component={AdminPartsPage} adminOnly />
         </Route>
 
         <Route path="/admin/categories">
