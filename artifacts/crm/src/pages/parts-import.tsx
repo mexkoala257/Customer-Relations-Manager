@@ -127,16 +127,25 @@ export default function PartsImportPage() {
   function auth() { return { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" }; }
   function authUpload() { return { Authorization: `Bearer ${getToken()}` }; }
 
-  async function loadCategories() {
-    if (catLoaded) return;
+  async function loadCategories(): Promise<Category[]> {
+    if (catLoaded) return categories;
     const res = await fetch("/api/categories", { headers: auth() });
-    setCategories(await res.json());
+    const cats: Category[] = await res.json();
+    setCategories(cats);
     setCatLoaded(true);
+    return cats;
+  }
+
+  function resolveCategory(guess: string | null, cats: Category[]): number | null {
+    if (!guess) return null;
+    const normalized = guess.trim().toLowerCase();
+    const match = cats.find(c => c.name.toLowerCase() === normalized);
+    return match?.id ?? null;
   }
 
   async function handleFullImport(file: File) {
     setLoading(true);
-    await loadCategories();
+    const cats = await loadCategories();
     try {
       const fd = new FormData();
       fd.append("pdf", file);
@@ -147,7 +156,11 @@ export default function PartsImportPage() {
         return;
       }
       const data = await res.json();
-      setParts(data.parts.map((p: ExtractedPart) => ({ ...p, _skip: false, categoryId: null })));
+      setParts(data.parts.map((p: ExtractedPart) => ({
+        ...p,
+        _skip: false,
+        categoryId: resolveCategory(p.categoryGuess, cats),
+      })));
     } finally {
       setLoading(false);
     }
@@ -155,7 +168,7 @@ export default function PartsImportPage() {
 
   async function handlePriceUpdate(file: File) {
     setLoading(true);
-    await loadCategories();
+    const cats = await loadCategories();
     try {
       const fd = new FormData();
       fd.append("pdf", file);
@@ -167,7 +180,11 @@ export default function PartsImportPage() {
       }
       const data = await res.json();
       setMatched(data.matched.map((r: PriceUpdateRow) => ({ ...r, _skip: !r.hasChanges })));
-      setNewParts(data.newParts.map((p: NewPart) => ({ ...p, _skip: false, categoryId: null })));
+      setNewParts(data.newParts.map((p: NewPart) => ({
+        ...p,
+        _skip: false,
+        categoryId: resolveCategory(p.categoryGuess, cats),
+      })));
       setDiscontinued(data.discontinued);
     } finally {
       setLoading(false);
@@ -348,7 +365,7 @@ export default function PartsImportPage() {
                             </td>
                             <td className="px-3 py-2">
                               <select value={part.categoryId ?? ""} onChange={e => updatePart(idx, "categoryId", e.target.value ? Number(e.target.value) : null)} className="text-xs bg-background border border-border rounded px-1.5 py-1 focus:outline-none">
-                                <option value="">{part.categoryGuess ?? "—"}</option>
+                                <option value="">— None —</option>
                                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                               </select>
                             </td>

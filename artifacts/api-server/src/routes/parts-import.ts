@@ -46,12 +46,15 @@ CRITICAL PART NUMBER RULES:
 - Copy each part number EXACTLY as it appears in the table row — do NOT add, remove, or alter any characters.
 - PDF price sheets often have section headers (e.g. "Automotive", "Marine", "AGM") above groups of rows. These headers are NOT part of the part number. Never prepend a section header letter or abbreviation to a part number. For example, if "Automotive" is a section header and the row shows "MT-41", the part number is "MT-41" — NOT "AMT-41".
 - Part numbers typically contain only letters, digits, and hyphens (e.g. MT-41, SRM-4D, UTX9).
+CATEGORY RULES:
+- The PDF is divided into sections with a header label such as "Automotive", "Marine", "AGM", "Deep Cycle", "Commercial", "Lawn & Garden", or "Powersport".
+- Track which section header is currently active as you read through the document. Every part row that follows a header belongs to that category.
+- Set "c" to the active section header name for every part in that section (e.g. "Automotive", "Marine"). Do NOT leave "c" null if a section header is visible above the row.
 IMPORTANT price tier rules for Interstate Batteries:
 - "r" (Retail) = the HIGHEST price, what end consumers pay (MSRP)
 - "x" (Xstore) = the LOWER dealer/store price, always less than retail
 - "t" (Tier 1) = the LOWEST price, best dealer rate
 If unsure which column is which, assign the highest value to "r" and lower to "x".
-Categories: Automotive, Marine, AGM, Deep Cycle, Commercial, Lawn & Garden, Powersport.
 Do not invent prices. If you cannot extract valid rows, return [].
 
 Price sheet text:
