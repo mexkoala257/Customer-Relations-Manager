@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, partsTable, productCategoriesTable } from "@workspace/db";
 import { eq, ilike, or, and, sql } from "drizzle-orm";
-import { requireAuth, requireAdmin } from "../lib/auth";
+import { requireAuth, requireAdmin, requireSuperAdmin } from "../lib/auth";
 
 const router = Router();
 
@@ -139,6 +139,12 @@ router.delete("/parts/:id", requireAdmin, async (req, res) => {
   const [deleted] = await db.delete(partsTable).where(eq(partsTable.id, id)).returning();
   if (!deleted) return res.status(404).json({ error: "Not found" });
   return res.json({ ok: true });
+});
+
+router.delete("/parts", requireSuperAdmin, async (req, res) => {
+  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(partsTable);
+  await db.delete(partsTable);
+  return res.json({ ok: true, deleted: count });
 });
 
 router.post("/parts/bulk", requireAdmin, async (req, res) => {

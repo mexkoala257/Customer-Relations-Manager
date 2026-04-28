@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { getToken } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import {
   Plus, Search, Loader2, Check, X, Trash2, Pencil, ChevronDown,
-  ToggleLeft, ToggleRight, Tag, Upload, Package,
+  ToggleLeft, ToggleRight, Tag, Upload, Package, AlertTriangle,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -58,6 +59,8 @@ function PriceInput({ value, onChange, placeholder }: { value: string; onChange:
 
 export default function AdminPartsPage() {
   const { toast } = useToast();
+  const { userRole } = useAuth();
+  const isSuperAdmin = userRole === "superadmin";
   const PAGE_SIZE = 100;
   const [parts, setParts] = useState<Part[]>([]);
   const [total, setTotal] = useState(0);
@@ -74,6 +77,9 @@ export default function AdminPartsPage() {
   const [showNew, setShowNew] = useState(false);
   const [newState, setNewState] = useState<EditState>(EMPTY_EDIT);
   const [creating, setCreating] = useState(false);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState("");
+  const [deletingAll, setDeletingAll] = useState(false);
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -212,6 +218,29 @@ export default function AdminPartsPage() {
       fetchParts();
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function deleteAllParts() {
+    setDeletingAll(true);
+    try {
+      const res = await fetch("/api/parts", {
+        method: "DELETE",
+        headers: auth(),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: data.error ?? "Delete failed", variant: "destructive" });
+        return;
+      }
+      toast({ title: `Deleted ${data.deleted} part${data.deleted !== 1 ? "s" : ""}` });
+      setShowDeleteAll(false);
+      setDeleteAllConfirm("");
+      setParts([]);
+      setTotal(0);
+      setPage(0);
+    } finally {
+      setDeletingAll(false);
     }
   }
 
@@ -584,6 +613,68 @@ export default function AdminPartsPage() {
           </div>
         )}
       </div>
+
+      {/* Danger Zone — superadmin only */}
+      {isSuperAdmin && (
+        <div className="mt-10 border border-destructive/40 rounded-2xl p-5 bg-destructive/5">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Permanently delete every part in the catalog. This cannot be undone. Use only as a last resort before re-importing a clean price sheet.
+          </p>
+          <button
+            onClick={() => { setShowDeleteAll(true); setDeleteAllConfirm(""); }}
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-destructive text-destructive hover:bg-destructive hover:text-white transition-colors"
+          >
+            Delete All Parts…
+          </button>
+        </div>
+      )}
+
+      {/* Delete-all confirmation modal */}
+      {showDeleteAll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0" />
+              <h2 className="text-base font-semibold">Delete all {total.toLocaleString()} parts?</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              This will permanently erase every part, price, and category assignment in the catalog. There is no undo.
+            </p>
+            <p className="text-sm font-medium mb-2">
+              Type <span className="font-mono bg-muted px-1 rounded">DELETE ALL</span> to confirm:
+            </p>
+            <input
+              type="text"
+              value={deleteAllConfirm}
+              onChange={e => setDeleteAllConfirm(e.target.value)}
+              placeholder="DELETE ALL"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:border-destructive mb-4 font-mono"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setShowDeleteAll(false); setDeleteAllConfirm(""); }}
+                disabled={deletingAll}
+                className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteAllParts}
+                disabled={deleteAllConfirm !== "DELETE ALL" || deletingAll}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-destructive text-white hover:bg-destructive/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {deletingAll && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Yes, delete everything
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
