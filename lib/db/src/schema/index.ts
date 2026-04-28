@@ -10,3 +10,6 @@ export * from "./bug-reports";
 export * from "./watchers";
 export * from "./email-logs";
 export * from "./direct-messages";
+export * from "./product-categories";
+export * from "./parts";
+export * from "./account-custom-prices";

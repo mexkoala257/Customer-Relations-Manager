@@ -15,7 +15,8 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X, StickyNote, Trash2, PlusCircle, UserRound } from "lucide-react";
+import { ArrowLeft, MapPin, Mail, Loader2, Phone, Building2, Clock, Pencil, Save, X, StickyNote, Trash2, PlusCircle, UserRound, Package, ChevronDown, Tag } from "lucide-react";
+import { getToken } from "@/lib/api";
 import { LEAD_STATUSES } from "@/lib/lead-status";
 import { WatchButton } from "@/components/WatchButton";
 
@@ -29,6 +30,34 @@ interface AccountNote {
 }
 
 import { STATUS_BADGE } from "@/lib/lead-status";
+
+interface CustomPrice {
+  id: number;
+  partId: number;
+  partNumber: string;
+  description: string | null;
+  categoryName: string | null;
+  retailPrice: string | null;
+  xstorePrice: string | null;
+  tier1Price: string | null;
+  customPrice: string;
+}
+
+interface PartResult {
+  id: number;
+  partNumber: string;
+  description: string | null;
+  categoryName: string | null;
+  retailPrice: string | null;
+  xstorePrice: string | null;
+  tier1Price: string | null;
+}
+
+const TIER_LABELS: Record<string, string> = {
+  retail: "Retail",
+  xstore: "Xstore",
+  tier1: "Tier 1",
+};
 
 export default function CustomerDetailPage({ id }: { id: string }) {
   const { toast } = useToast();
@@ -65,6 +94,69 @@ export default function CustomerDetailPage({ id }: { id: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: notesQueryKey }),
     onError: () => toast({ title: "Failed to delete note", variant: "destructive" }),
   });
+
+  // Pricing state
+  const authH = () => ({ Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" });
+  const customPricesKey = ["custom-prices", id];
+  const { data: customPrices = [], refetch: refetchCustomPrices } = useQuery<CustomPrice[]>({
+    queryKey: customPricesKey,
+    queryFn: () => fetch(`/api/customers/${id}/custom-prices`, { headers: authH() }).then(r => r.json()),
+    enabled: !!id,
+  });
+  const [partSearch, setPartSearch] = useState("");
+  const [partResults, setPartResults] = useState<PartResult[]>([]);
+  const [selectedPart, setSelectedPart] = useState<PartResult | null>(null);
+  const [customPriceInput, setCustomPriceInput] = useState("");
+  const [searchingParts, setSearchingParts] = useState(false);
+  const [savingTier, setSavingTier] = useState(false);
+
+  async function updateTier(tier: string) {
+    setSavingTier(true);
+    try {
+      await fetch(`/api/customers/${id}/price-tier`, {
+        method: "PATCH",
+        headers: authH(),
+        body: JSON.stringify({ priceTier: tier }),
+      });
+      queryClient.invalidateQueries({ queryKey: getGetCustomerQueryKey({ id }) });
+      toast({ title: "Price tier updated" });
+    } finally {
+      setSavingTier(false);
+    }
+  }
+
+  async function searchParts(q: string) {
+    setPartSearch(q);
+    if (!q.trim()) { setPartResults([]); return; }
+    setSearchingParts(true);
+    try {
+      const res = await fetch(`/api/parts?q=${encodeURIComponent(q)}&includeInactive=false`, { headers: authH() });
+      setPartResults(await res.json());
+    } finally {
+      setSearchingParts(false);
+    }
+  }
+
+  async function addCustomPrice() {
+    if (!selectedPart || !customPriceInput) return;
+    await fetch(`/api/customers/${id}/custom-prices`, {
+      method: "POST",
+      headers: authH(),
+      body: JSON.stringify({ partId: selectedPart.id, customPrice: customPriceInput }),
+    });
+    setSelectedPart(null);
+    setPartSearch("");
+    setPartResults([]);
+    setCustomPriceInput("");
+    refetchCustomPrices();
+    toast({ title: "Custom price saved" });
+  }
+
+  async function removeCustomPrice(priceId: number) {
+    await fetch(`/api/customers/${id}/custom-prices/${priceId}`, { method: "DELETE", headers: authH() });
+    refetchCustomPrices();
+    toast({ title: "Custom price removed" });
+  }
 
   const [showNewLeadModal, setShowNewLeadModal] = useState(false);
   const [leadForm, setLeadForm] = useState({
@@ -547,6 +639,122 @@ export default function CustomerDetailPage({ id }: { id: string }) {
               </div>
             </>
           )}
+        </div>
+
+        {/* Pricing */}
+        <div className="bg-card border border-card-border rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pricing</h2>
+          </div>
+
+          {/* Tier picker */}
+          <div className="flex items-center gap-3 mb-5">
+            <label className="text-sm font-medium text-foreground whitespace-nowrap">Account Tier</label>
+            <div className="relative">
+              <select
+                value={(customer as any)?.priceTier ?? "retail"}
+                onChange={e => updateTier(e.target.value)}
+                disabled={savingTier}
+                className="appearance-none bg-background border border-border rounded-lg px-3 py-2 text-sm pr-8 focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-60"
+                data-testid="price-tier-select"
+              >
+                <option value="retail">Retail</option>
+                <option value="xstore">Xstore</option>
+                <option value="tier1">Tier 1</option>
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            </div>
+            {savingTier && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+          </div>
+
+          {/* Custom prices */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Custom Price Overrides</p>
+
+            {/* Search to add */}
+            <div className="space-y-2">
+              <div className="relative">
+                <input
+                  value={selectedPart ? `${selectedPart.partNumber}${selectedPart.description ? ` — ${selectedPart.description}` : ""}` : partSearch}
+                  onChange={e => { setSelectedPart(null); searchParts(e.target.value); }}
+                  placeholder="Search part number or description…"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 pr-8"
+                  data-testid="custom-price-part-search"
+                />
+                {searchingParts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                {partResults.length > 0 && !selectedPart && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                    {partResults.slice(0, 8).map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => { setSelectedPart(p); setPartResults([]); setPartSearch(""); }}
+                        className="w-full text-left px-3 py-2.5 hover:bg-muted transition-colors flex items-center justify-between gap-2"
+                      >
+                        <div>
+                          <span className="font-mono text-xs font-bold">{p.partNumber}</span>
+                          {p.description && <span className="text-xs text-muted-foreground ml-2">{p.description}</span>}
+                        </div>
+                        {p.categoryName && <span className="text-[10px] bg-muted rounded-full px-2 py-0.5 text-muted-foreground flex-shrink-0">{p.categoryName}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedPart && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Custom price for <span className="font-mono font-bold">{selectedPart.partNumber}</span>:</span>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={customPriceInput}
+                      onChange={e => setCustomPriceInput(e.target.value)}
+                      placeholder="0.00"
+                      className="w-28 pl-6 pr-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                      data-testid="custom-price-input"
+                    />
+                  </div>
+                  <button
+                    onClick={addCustomPrice}
+                    disabled={!customPriceInput}
+                    className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-40"
+                    data-testid="custom-price-save-btn"
+                  >
+                    Save
+                  </button>
+                  <button onClick={() => { setSelectedPart(null); setPartSearch(""); setCustomPriceInput(""); }} className="p-2 rounded-lg hover:bg-muted">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* List of existing custom prices */}
+            {customPrices.length > 0 ? (
+              <div className="border border-border rounded-xl overflow-hidden divide-y divide-border">
+                {customPrices.map(cp => (
+                  <div key={cp.id} className="px-3 py-2.5 flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <span className="font-mono text-xs font-bold">{cp.partNumber}</span>
+                      {cp.description && <span className="text-xs text-muted-foreground ml-2 truncate">{cp.description}</span>}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs flex-shrink-0">
+                      <span className="text-muted-foreground line-through">${parseFloat(cp[((customer as any)?.priceTier === "xstore" ? "xstorePrice" : (customer as any)?.priceTier === "tier1" ? "tier1Price" : "retailPrice") as keyof CustomPrice] as string ?? "0").toFixed(2)}</span>
+                      <span className="font-bold text-accent">${parseFloat(cp.customPrice).toFixed(2)}</span>
+                      <button onClick={() => removeCustomPrice(cp.id)} className="p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-colors">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No custom prices set for this account</p>
+            )}
+          </div>
         </div>
 
         {/* Quick Notes */}

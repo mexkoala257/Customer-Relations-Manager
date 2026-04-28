@@ -15,6 +15,10 @@ import bugReportsRouter from "./bug-reports";
 import watchersRouter from "./watchers";
 import emailLogsRouter from "./email-logs";
 import directMessagesRouter from "./direct-messages";
+import productCategoriesRouter from "./product-categories";
+import partsRouter from "./parts";
+import partsImportRouter from "./parts-import";
+import accountCustomPricesRouter from "./account-custom-prices";
 
 const router: IRouter = Router();
 
@@ -34,5 +38,9 @@ router.use(bugReportsRouter);
 router.use(watchersRouter);
 router.use(emailLogsRouter);
 router.use(directMessagesRouter);
+router.use(productCategoriesRouter);
+router.use(partsRouter);
+router.use(partsImportRouter);
+router.use(accountCustomPricesRouter);
 
 export default router;

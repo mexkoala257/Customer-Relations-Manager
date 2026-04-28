@@ -22,6 +22,8 @@ import {
   Bug,
   Mail,
   BarChart2,
+  Package,
+  Tag,
 } from "lucide-react";
 import { BugReportModal } from "@/components/BugReportModal";
 
@@ -29,6 +31,7 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "My Leads", icon: TrendingUp, href: "/leads" },
   { label: "Customers", icon: Building2, href: "/customers" },
+  { label: "Price Lookup", icon: Package, href: "/parts" },
   { label: "Following", icon: BellRing, href: "/following" },
   { label: "Messages", icon: MessageSquare, href: "/team" },
   { label: "Reminders", icon: Bell, href: "/reminders" },
@@ -38,6 +41,7 @@ const navItems = [
 
 const adminItems = [
   { label: "Manage Users", icon: Users, href: "/admin/users" },
+  { label: "Categories", icon: Tag, href: "/admin/categories" },
   { label: "Reminders", icon: Bell, href: "/admin/reminders" },
   { label: "Reports", icon: FileText, href: "/admin/reports" },
   { label: "Report Builder", icon: BarChart2, href: "/admin/report-builder" },
