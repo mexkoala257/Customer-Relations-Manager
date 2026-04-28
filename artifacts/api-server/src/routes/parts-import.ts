@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { requireAdmin } from "../lib/auth";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { GoogleGenAI } from "@google/genai";
 import { db, partsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 // @ts-ignore
@@ -9,6 +9,8 @@ import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 interface ExtractedPart {
   partNumber: string;
@@ -25,13 +27,15 @@ async function extractTextFromPdf(buffer: Buffer): Promise<string> {
 }
 
 async function parsePartsFromText(text: string): Promise<ExtractedPart[]> {
-  const response = await openai.chat.completions.create({
-    model: "gpt-5.1",
-    max_completion_tokens: 8192,
-    messages: [
+  const response = await gemini.models.generateContent({
+    model: "gemini-2.5-flash",
+    config: { maxOutputTokens: 8192 },
+    contents: [
       {
-        role: "system",
-        content: `You are a data extraction assistant. You will receive raw text extracted from an Interstate Batteries price sheet PDF.
+        role: "user",
+        parts: [
+          {
+            text: `You are a data extraction assistant. You will receive raw text extracted from an Interstate Batteries price sheet PDF.
 Extract ALL part numbers and their prices into a JSON array. The price sheet has 3 price tiers: Retail, Xstore, and Tier 1 (sometimes labeled T1 or Tier1 or similar).
 Return ONLY a valid JSON array with no markdown, no explanation.
 Each object must have:
@@ -40,16 +44,18 @@ Each object must have:
 - xstorePrice: string or null
 - tier1Price: string or null
 - categoryGuess: string or null (e.g. "Automotive", "Marine", "AGM", "Deep Cycle", "Commercial" — your best guess from context)
-If a price is missing or unclear, use null. Do not invent prices. If you cannot extract valid rows, return [].`,
-      },
-      {
-        role: "user",
-        content: `Extract all parts from this price sheet text:\n\n${text.slice(0, 28000)}`,
+If a price is missing or unclear, use null. Do not invent prices. If you cannot extract valid rows, return [].
+
+Extract all parts from this price sheet text:
+
+${text.slice(0, 28000)}`,
+          },
+        ],
       },
     ],
   });
 
-  const content = response.choices[0]?.message?.content ?? "[]";
+  const content = response.text ?? "[]";
   try {
     const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     return JSON.parse(cleaned) as ExtractedPart[];
@@ -62,22 +68,24 @@ async function enrichDescriptions(parts: ExtractedPart[]): Promise<ExtractedPart
   if (parts.length === 0) return parts;
 
   const partNumbers = parts.map((p) => p.partNumber).join(", ");
-  const response = await openai.chat.completions.create({
-    model: "gpt-5.1",
-    max_completion_tokens: 8192,
-    messages: [
-      {
-        role: "system",
-        content: `You are a battery product expert specializing in Interstate Batteries. Given a list of Interstate Battery part numbers, provide a short description for each one based on your product knowledge (type, voltage, CCA, group size, etc.). Return ONLY a valid JSON object mapping partNumber → description string. If you don't know a part number, use null. No markdown, no explanation.`,
-      },
+  const response = await gemini.models.generateContent({
+    model: "gemini-2.5-flash",
+    config: { maxOutputTokens: 8192 },
+    contents: [
       {
         role: "user",
-        content: `Provide descriptions for these Interstate Battery part numbers: ${partNumbers}`,
+        parts: [
+          {
+            text: `You are a battery product expert specializing in Interstate Batteries. Given a list of Interstate Battery part numbers, provide a short description for each one based on your product knowledge (type, voltage, CCA, group size, etc.). Return ONLY a valid JSON object mapping partNumber → description string. If you don't know a part number, use null. No markdown, no explanation.
+
+Provide descriptions for these Interstate Battery part numbers: ${partNumbers}`,
+          },
+        ],
       },
     ],
   });
 
-  const content = response.choices[0]?.message?.content ?? "{}";
+  const content = response.text ?? "{}";
   try {
     const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const map = JSON.parse(cleaned) as Record<string, string | null>;
