@@ -29,26 +29,24 @@ async function extractTextFromPdf(buffer: Buffer): Promise<string> {
 async function parsePartsFromText(text: string): Promise<ExtractedPart[]> {
   const response = await gemini.models.generateContent({
     model: "gemini-2.5-flash",
-    config: { maxOutputTokens: 8192 },
+    config: {
+      maxOutputTokens: 65536,
+      responseMimeType: "application/json",
+    },
     contents: [
       {
         role: "user",
         parts: [
           {
-            text: `You are a data extraction assistant. You will receive raw text extracted from an Interstate Batteries price sheet PDF.
-Extract ALL part numbers and their prices into a JSON array. The price sheet has 3 price tiers: Retail, Xstore, and Tier 1 (sometimes labeled T1 or Tier1 or similar).
-Return ONLY a valid JSON array with no markdown, no explanation.
-Each object must have:
-- partNumber: string (the battery part number, uppercase)
-- retailPrice: string or null (numeric string like "89.99")
-- xstorePrice: string or null
-- tier1Price: string or null
-- categoryGuess: string or null (e.g. "Automotive", "Marine", "AGM", "Deep Cycle", "Commercial" — your best guess from context)
-If a price is missing or unclear, use null. Do not invent prices. If you cannot extract valid rows, return [].
+            text: `You are a data extraction assistant. Extract ALL part numbers and prices from this Interstate Batteries price sheet text into a JSON array.
+The sheet has 3 price tiers: Retail, Xstore, and Tier 1 (may be labeled T1, Tier1, or similar).
+Output a compact JSON array. Each element: {"p":"PART_NUMBER","r":"retail_price_or_null","x":"xstore_price_or_null","t":"tier1_price_or_null","c":"category_guess_or_null"}
+Use short keys to stay within token limits. Omit null values entirely rather than writing null.
+Categories: Automotive, Marine, AGM, Deep Cycle, Commercial, Lawn & Garden, Powersport.
+Do not invent prices. If you cannot extract valid rows, return [].
 
-Extract all parts from this price sheet text:
-
-${text.slice(0, 28000)}`,
+Price sheet text:
+${text.slice(0, 30000)}`,
           },
         ],
       },
@@ -59,7 +57,16 @@ ${text.slice(0, 28000)}`,
   console.log("[parts-import] parsePartsFromText raw response (first 500 chars):", content.slice(0, 500));
   try {
     const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned) as ExtractedPart[];
+    const raw = JSON.parse(cleaned) as Array<Record<string, string | null>>;
+    // Map compact keys back to full field names
+    const parsed: ExtractedPart[] = raw.map((row) => ({
+      partNumber: (row.p ?? row.partNumber ?? "") as string,
+      retailPrice: (row.r ?? row.retailPrice ?? null) as string | null,
+      xstorePrice: (row.x ?? row.xstorePrice ?? null) as string | null,
+      tier1Price: (row.t ?? row.tier1Price ?? null) as string | null,
+      categoryGuess: (row.c ?? row.categoryGuess ?? null) as string | null,
+      description: (row.description ?? null) as string | null,
+    })).filter((p) => p.partNumber);
     console.log("[parts-import] parsed", parsed.length, "parts");
     return parsed;
   } catch (e) {
@@ -74,13 +81,16 @@ async function enrichDescriptions(parts: ExtractedPart[]): Promise<ExtractedPart
   const partNumbers = parts.map((p) => p.partNumber).join(", ");
   const response = await gemini.models.generateContent({
     model: "gemini-2.5-flash",
-    config: { maxOutputTokens: 8192 },
+    config: {
+      maxOutputTokens: 65536,
+      responseMimeType: "application/json",
+    },
     contents: [
       {
         role: "user",
         parts: [
           {
-            text: `You are a battery product expert specializing in Interstate Batteries. Given a list of Interstate Battery part numbers, provide a short description for each one based on your product knowledge (type, voltage, CCA, group size, etc.). Return ONLY a valid JSON object mapping partNumber → description string. If you don't know a part number, use null. No markdown, no explanation.
+            text: `You are a battery product expert specializing in Interstate Batteries. Given a list of Interstate Battery part numbers, provide a short description for each one based on your product knowledge (type, voltage, CCA, group size, etc.). Return ONLY a valid JSON object mapping partNumber → description string. If you don't know a part number, use null.
 
 Provide descriptions for these Interstate Battery part numbers: ${partNumbers}`,
           },
