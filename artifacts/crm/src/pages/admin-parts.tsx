@@ -111,8 +111,8 @@ export default function AdminPartsPage() {
       params.set("offset", String(page * PAGE_SIZE));
       const res = await fetch(`/api/parts?${params}`, { headers: auth() });
       const data = await res.json();
-      setParts(data.rows);
-      setTotal(data.total);
+      setParts(data.rows ?? []);
+      setTotal(data.total ?? 0);
     } finally {
       setLoading(false);
     }
@@ -367,7 +367,7 @@ export default function AdminPartsPage() {
           <div className="flex justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-        ) : parts.length === 0 ? (
+        ) : (parts?.length ?? 0) === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm">{q || categoryFilter ? "No parts match your search" : "No parts in the catalog yet"}</p>
