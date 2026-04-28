@@ -42,6 +42,10 @@ async function parsePartsFromText(text: string): Promise<ExtractedPart[]> {
 The sheet has 3 price tiers: Retail, Xstore, and Tier 1 (may be labeled T1, Tier1, or similar).
 Output a compact JSON array. Each element: {"p":"PART_NUMBER","r":"retail_price_or_null","x":"xstore_price_or_null","t":"tier1_price_or_null","c":"category_guess_or_null"}
 Use short keys to stay within token limits. Omit null values entirely rather than writing null.
+CRITICAL PART NUMBER RULES:
+- Copy each part number EXACTLY as it appears in the table row — do NOT add, remove, or alter any characters.
+- PDF price sheets often have section headers (e.g. "Automotive", "Marine", "AGM") above groups of rows. These headers are NOT part of the part number. Never prepend a section header letter or abbreviation to a part number. For example, if "Automotive" is a section header and the row shows "MT-41", the part number is "MT-41" — NOT "AMT-41".
+- Part numbers typically contain only letters, digits, and hyphens (e.g. MT-41, SRM-4D, UTX9).
 IMPORTANT price tier rules for Interstate Batteries:
 - "r" (Retail) = the HIGHEST price, what end consumers pay (MSRP)
 - "x" (Xstore) = the LOWER dealer/store price, always less than retail
