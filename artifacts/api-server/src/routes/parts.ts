@@ -6,7 +6,10 @@ import { requireAuth, requireAdmin } from "../lib/auth";
 const router = Router();
 
 router.get("/parts", requireAuth, async (req, res) => {
-  const { q, categoryId, includeInactive } = req.query as Record<string, string>;
+  const { q, categoryId, includeInactive, limit: limitParam, offset: offsetParam } = req.query as Record<string, string>;
+  const limit = Math.min(Math.max(Number(limitParam) || 100, 1), 500);
+  const offset = Math.max(Number(offsetParam) || 0, 0);
+
   const conditions = [];
   if (!includeInactive || includeInactive !== "true") {
     conditions.push(eq(partsTable.isActive, true));
@@ -22,6 +25,13 @@ router.get("/parts", requireAuth, async (req, res) => {
       )!
     );
   }
+  const where = conditions.length ? and(...conditions) : undefined;
+
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(partsTable)
+    .where(where);
+
   const rows = await db
     .select({
       id: partsTable.id,
@@ -38,10 +48,12 @@ router.get("/parts", requireAuth, async (req, res) => {
     })
     .from(partsTable)
     .leftJoin(productCategoriesTable, eq(partsTable.categoryId, productCategoriesTable.id))
-    .where(conditions.length ? and(...conditions) : undefined)
+    .where(where)
     .orderBy(partsTable.partNumber)
-    .limit(200);
-  res.json(rows);
+    .limit(limit)
+    .offset(offset);
+
+  res.json({ rows, total, limit, offset });
 });
 
 router.get("/parts/:id", requireAuth, async (req, res) => {

@@ -130,8 +130,9 @@ export default function CustomerDetailPage({ id }: { id: string }) {
     if (!q.trim()) { setPartResults([]); return; }
     setSearchingParts(true);
     try {
-      const res = await fetch(`/api/parts?q=${encodeURIComponent(q)}&includeInactive=false`, { headers: authH() });
-      setPartResults(await res.json());
+      const res = await fetch(`/api/parts?q=${encodeURIComponent(q)}&includeInactive=false&limit=50`, { headers: authH() });
+      const data = await res.json();
+      setPartResults(data.rows ?? data);
     } finally {
       setSearchingParts(false);
     }

@@ -58,7 +58,10 @@ function PriceInput({ value, onChange, placeholder }: { value: string; onChange:
 
 export default function AdminPartsPage() {
   const { toast } = useToast();
+  const PAGE_SIZE = 100;
   const [parts, setParts] = useState<Part[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [q, setQ] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -72,6 +75,7 @@ export default function AdminPartsPage() {
   const [newState, setNewState] = useState<EditState>(EMPTY_EDIT);
   const [creating, setCreating] = useState(false);
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   function auth() {
     return { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" };
@@ -84,11 +88,17 @@ export default function AdminPartsPage() {
       .catch(() => {});
   }, []);
 
+  // Reset to page 0 when filters change
+  useEffect(() => {
+    setPage(0);
+    setEditingId(null);
+  }, [q, categoryFilter, includeInactive]);
+
   useEffect(() => {
     if (searchRef.current) clearTimeout(searchRef.current);
     searchRef.current = setTimeout(fetchParts, 250);
     return () => { if (searchRef.current) clearTimeout(searchRef.current); };
-  }, [q, categoryFilter, includeInactive]);
+  }, [q, categoryFilter, includeInactive, page]);
 
   async function fetchParts() {
     setLoading(true);
@@ -97,8 +107,12 @@ export default function AdminPartsPage() {
       if (q.trim()) params.set("q", q.trim());
       if (categoryFilter) params.set("categoryId", categoryFilter);
       if (includeInactive) params.set("includeInactive", "true");
+      params.set("limit", String(PAGE_SIZE));
+      params.set("offset", String(page * PAGE_SIZE));
       const res = await fetch(`/api/parts?${params}`, { headers: auth() });
-      setParts(await res.json());
+      const data = await res.json();
+      setParts(data.rows);
+      setTotal(data.total);
     } finally {
       setLoading(false);
     }
@@ -360,7 +374,10 @@ export default function AdminPartsPage() {
           </div>
         ) : (
           <div>
-            <p className="text-xs text-muted-foreground mb-2">{parts.length} part{parts.length !== 1 ? "s" : ""}{parts.length === 200 ? " (first 200)" : ""}</p>
+            <p className="text-xs text-muted-foreground mb-2">
+            {total} part{total !== 1 ? "s" : ""} total
+            {totalPages > 1 && ` — page ${page + 1} of ${totalPages}`}
+          </p>
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -498,6 +515,72 @@ export default function AdminPartsPage() {
                 </table>
               </div>
             </div>
+
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <p className="text-xs text-muted-foreground">
+                  Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(0)}
+                    disabled={page === 0}
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    «
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ‹ Prev
+                  </button>
+                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                    // Show pages around current
+                    let p: number;
+                    if (totalPages <= 7) {
+                      p = i;
+                    } else if (page < 4) {
+                      p = i;
+                    } else if (page > totalPages - 5) {
+                      p = totalPages - 7 + i;
+                    } else {
+                      p = page - 3 + i;
+                    }
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={cn(
+                          "px-3 py-1.5 text-xs rounded-lg border transition-colors",
+                          p === page
+                            ? "border-accent bg-accent text-accent-foreground font-semibold"
+                            : "border-border hover:bg-muted"
+                        )}
+                      >
+                        {p + 1}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next ›
+                  </button>
+                  <button
+                    onClick={() => setPage(totalPages - 1)}
+                    disabled={page >= totalPages - 1}
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

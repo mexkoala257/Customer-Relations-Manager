@@ -74,8 +74,10 @@ export default function PartsPage() {
       if (q.trim()) params.set("q", q.trim());
       if (categoryId) params.set("categoryId", categoryId);
       if (includeInactive) params.set("includeInactive", "true");
+      params.set("limit", "200");
       const res = await fetch(`/api/parts?${params}`, { headers: auth() });
-      setParts(await res.json());
+      const data = await res.json();
+      setParts(data.rows ?? data);
     } finally {
       setLoading(false);
     }
