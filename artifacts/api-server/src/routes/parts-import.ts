@@ -56,10 +56,14 @@ ${text.slice(0, 28000)}`,
   });
 
   const content = response.text ?? "[]";
+  console.log("[parts-import] parsePartsFromText raw response (first 500 chars):", content.slice(0, 500));
   try {
     const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    return JSON.parse(cleaned) as ExtractedPart[];
-  } catch {
+    const parsed = JSON.parse(cleaned) as ExtractedPart[];
+    console.log("[parts-import] parsed", parsed.length, "parts");
+    return parsed;
+  } catch (e) {
+    console.error("[parts-import] JSON parse error:", e, "| raw:", content.slice(0, 300));
     return [];
   }
 }
@@ -107,6 +111,7 @@ router.post(
     if (!req.file) return res.status(400).json({ error: "No PDF file uploaded" });
     try {
       const text = await extractTextFromPdf(req.file.buffer);
+      console.log("[parts-import] PDF text length:", text.length, "| first 200:", text.slice(0, 200));
       if (!text.trim()) return res.status(422).json({ error: "Could not extract text from PDF" });
 
       const parts = await parsePartsFromText(text);
@@ -118,7 +123,7 @@ router.post(
       return res.json({ parts: enriched, pageCount: text.length });
     } catch (err) {
       console.error("Import extract error:", err);
-      return res.status(500).json({ error: "Failed to process PDF" });
+      return res.status(500).json({ error: "Failed to process PDF", detail: String(err) });
     }
   }
 );
