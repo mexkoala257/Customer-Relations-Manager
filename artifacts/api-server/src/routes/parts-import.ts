@@ -42,6 +42,11 @@ async function parsePartsFromText(text: string): Promise<ExtractedPart[]> {
 The sheet has 3 price tiers: Retail, Xstore, and Tier 1 (may be labeled T1, Tier1, or similar).
 Output a compact JSON array. Each element: {"p":"PART_NUMBER","r":"retail_price_or_null","x":"xstore_price_or_null","t":"tier1_price_or_null","c":"category_guess_or_null"}
 Use short keys to stay within token limits. Omit null values entirely rather than writing null.
+IMPORTANT price tier rules for Interstate Batteries:
+- "r" (Retail) = the HIGHEST price, what end consumers pay (MSRP)
+- "x" (Xstore) = the LOWER dealer/store price, always less than retail
+- "t" (Tier 1) = the LOWEST price, best dealer rate
+If unsure which column is which, assign the highest value to "r" and lower to "x".
 Categories: Automotive, Marine, AGM, Deep Cycle, Commercial, Lawn & Garden, Powersport.
 Do not invent prices. If you cannot extract valid rows, return [].
 

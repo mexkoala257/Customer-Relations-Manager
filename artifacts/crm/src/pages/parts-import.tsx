@@ -4,7 +4,7 @@ import { getToken } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
-  Upload, FileText, Loader2, Check, X, AlertTriangle, ChevronDown, RefreshCw, ArrowRight, Plus,
+  Upload, FileText, Loader2, Check, X, AlertTriangle, ChevronDown, RefreshCw, ArrowRight, Plus, ArrowLeftRight,
 } from "lucide-react";
 
 interface Category {
@@ -236,6 +236,21 @@ export default function PartsImportPage() {
   function updateNewPart(idx: number, field: keyof NewPart, value: string | number | null | boolean) {
     setNewParts(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
   }
+  function swapRetailXstore() {
+    setParts(prev => prev.map(p => ({ ...p, retailPrice: p.xstorePrice, xstorePrice: p.retailPrice })));
+    toast({ title: "Retail & Xstore prices swapped for all rows" });
+  }
+  function swapRetailXstoreMatched() {
+    setMatched(prev => prev.map(r => ({
+      ...r,
+      newRetail: r.newXstore,
+      newXstore: r.newRetail,
+      currentRetail: r.currentXstore,
+      currentXstore: r.currentRetail,
+    })));
+    setNewParts(prev => prev.map(p => ({ ...p, retailPrice: p.xstorePrice, xstorePrice: p.retailPrice })));
+    toast({ title: "Retail & Xstore prices swapped for all rows" });
+  }
 
   const changedCount = matched.filter(r => r.hasChanges && !r._skip).length;
   const includedCount = parts.filter(p => !p._skip).length;
@@ -279,11 +294,17 @@ export default function PartsImportPage() {
               <DropZone onFile={handleFullImport} loading={loading} />
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">{parts.length} parts extracted — review and edit before importing ({includedCount} selected)</p>
-                  <div className="flex gap-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{parts.length} parts extracted — review and edit before importing ({includedCount} selected)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">All cells are editable. Click any value to change it.</p>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
                     <button onClick={() => { setParts([]); setFullDone(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted">
                       <RefreshCw className="w-3.5 h-3.5" /> Re-upload
+                    </button>
+                    <button onClick={swapRetailXstore} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 text-sm hover:bg-amber-100 dark:hover:bg-amber-900/30">
+                      <ArrowLeftRight className="w-3.5 h-3.5" /> Swap Retail ↔ Xstore
                     </button>
                     <button
                       onClick={confirmFullImport}
@@ -369,14 +390,17 @@ export default function PartsImportPage() {
               </div>
             ) : (
               <div className="space-y-5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="text-sm text-muted-foreground">
                     <span className="font-medium text-foreground">{changedCount}</span> price change{changedCount !== 1 ? "s" : ""} to apply
                     {newParts.filter(p => !p._skip).length > 0 && <>, <span className="font-medium text-foreground">{newParts.filter(p => !p._skip).length}</span> new parts to add</>}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button onClick={() => { setMatched([]); setNewParts([]); setDiscontinued([]); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted">
                       <RefreshCw className="w-3.5 h-3.5" /> Re-upload
+                    </button>
+                    <button onClick={swapRetailXstoreMatched} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 text-sm hover:bg-amber-100 dark:hover:bg-amber-900/30">
+                      <ArrowLeftRight className="w-3.5 h-3.5" /> Swap Retail ↔ Xstore
                     </button>
                     <button
                       onClick={confirmPriceUpdate}
