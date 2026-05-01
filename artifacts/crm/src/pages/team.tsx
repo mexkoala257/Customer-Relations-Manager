@@ -85,7 +85,7 @@ function ItemCard({ author, time, onDelete, canDelete, children }: {
 
 // ── Messages Tab ──────────────────────────────────────────────────────────────
 
-type Message = { id: number; text: string; createdAt: string; userId: string; authorEmail: string | null };
+type Message = { id: number; text: string; createdAt: string; userId: string; author?: string; authorEmail: string | null };
 
 function MessagesTab({ userEmail, userId, isAdmin }: { userEmail: string; userId: string; isAdmin: boolean }) {
   const { toast } = useToast();
@@ -161,7 +161,7 @@ function MessagesTab({ userEmail, userId, isAdmin }: { userEmail: string; userId
           {messages.map((m) => (
             <ItemCard
               key={m.id}
-              author={m.authorEmail?.split("@")[0] ?? "Unknown"}
+              author={m.author ?? m.authorEmail?.split("@")[0] ?? "Unknown"}
               time={formatTime(m.createdAt)}
               onDelete={() => del(m.id)}
               canDelete={isAdmin || m.userId === userId}
@@ -178,7 +178,7 @@ function MessagesTab({ userEmail, userId, isAdmin }: { userEmail: string; userId
 
 // ── Updates Tab ───────────────────────────────────────────────────────────────
 
-type Update = { id: number; status: string; text: string; createdAt: string; userId: string; authorEmail: string | null };
+type Update = { id: number; status: string; text: string; createdAt: string; userId: string; author?: string; authorEmail: string | null };
 
 function UpdatesTab({ userId, isAdmin }: { userId: string; isAdmin: boolean }) {
   const { toast } = useToast();
@@ -263,7 +263,7 @@ function UpdatesTab({ userId, isAdmin }: { userId: string; isAdmin: boolean }) {
           {updates.map((u) => (
             <ItemCard
               key={u.id}
-              author={u.authorEmail?.split("@")[0] ?? "Unknown"}
+              author={u.author ?? u.authorEmail?.split("@")[0] ?? "Unknown"}
               time={formatTime(u.createdAt)}
               onDelete={() => del(u.id)}
               canDelete={isAdmin || u.userId === userId}
