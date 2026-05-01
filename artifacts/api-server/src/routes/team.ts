@@ -3,8 +3,9 @@ import fs from "fs";
 import { Router } from "express";
 import multer from "multer";
 import { db, teamMessagesTable, teamUpdatesTable, teamPhotosTable, teamDocumentsTable, teamVideosTable, usersTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
+import { getFeedConfig } from "./feed-config";
 
 const router = Router();
 
@@ -51,6 +52,8 @@ const upload = multer({
 // ── Messages ──────────────────────────────────────────────────────────────────
 
 router.get("/team/messages", async (_req, res): Promise<void> => {
+  const config = await getFeedConfig("messages");
+  const order = config.sortOrder === "asc" ? asc(teamMessagesTable.createdAt) : desc(teamMessagesTable.createdAt);
   const rows = await db
     .select({
       id: teamMessagesTable.id,
@@ -62,12 +65,17 @@ router.get("/team/messages", async (_req, res): Promise<void> => {
     })
     .from(teamMessagesTable)
     .leftJoin(usersTable, eq(teamMessagesTable.userId, usersTable.id))
-    .orderBy(desc(teamMessagesTable.createdAt));
-  res.json(rows.map((r) => ({
-    ...r,
-    createdAt: formatDate(r.createdAt),
+    .orderBy(order);
+  const all: Record<string, unknown>[] = rows.map((r) => ({
+    id: r.id,
     author: r.authorName || r.authorEmail?.split("@")[0] || "Unknown",
-  })));
+    authorEmail: r.authorEmail,
+    text: r.text,
+    createdAt: formatDate(r.createdAt),
+    userId: r.userId,
+  }));
+  const enabledKeys = config.fields.filter((f) => f.enabled).map((f) => f.key);
+  res.json(all.map((row) => Object.fromEntries(enabledKeys.map((k) => [k, row[k]]))));
 });
 
 router.post("/team/messages", requireAuth, async (req, res): Promise<void> => {
@@ -97,6 +105,8 @@ router.delete("/team/messages/:id", requireAuth, async (req, res): Promise<void>
 // ── Updates ───────────────────────────────────────────────────────────────────
 
 router.get("/team/updates", async (_req, res): Promise<void> => {
+  const config = await getFeedConfig("updates");
+  const order = config.sortOrder === "asc" ? asc(teamUpdatesTable.createdAt) : desc(teamUpdatesTable.createdAt);
   const rows = await db
     .select({
       id: teamUpdatesTable.id,
@@ -109,12 +119,18 @@ router.get("/team/updates", async (_req, res): Promise<void> => {
     })
     .from(teamUpdatesTable)
     .leftJoin(usersTable, eq(teamUpdatesTable.userId, usersTable.id))
-    .orderBy(desc(teamUpdatesTable.createdAt));
-  res.json(rows.map((r) => ({
-    ...r,
-    createdAt: formatDate(r.createdAt),
+    .orderBy(order);
+  const all: Record<string, unknown>[] = rows.map((r) => ({
+    id: r.id,
     author: r.authorName || r.authorEmail?.split("@")[0] || "Unknown",
-  })));
+    authorEmail: r.authorEmail,
+    status: r.status,
+    text: r.text,
+    createdAt: formatDate(r.createdAt),
+    userId: r.userId,
+  }));
+  const enabledKeys = config.fields.filter((f) => f.enabled).map((f) => f.key);
+  res.json(all.map((row) => Object.fromEntries(enabledKeys.map((k) => [k, row[k]]))));
 });
 
 router.post("/team/updates", requireAuth, async (req, res): Promise<void> => {
