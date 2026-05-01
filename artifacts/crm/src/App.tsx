@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { getToken } from "@/lib/api";
 import { AppSettingsProvider } from "@/contexts/app-settings";
+import { FeatureFlagsProvider, useFeatureFlags } from "@/contexts/feature-flags";
 import { BrandingEditor } from "@/components/branding-editor";
 import { ForcePasswordModal } from "@/components/force-password-modal";
 import { DirectMessageModal } from "@/components/DirectMessageModal";
@@ -37,6 +38,7 @@ import PartsPage from "@/pages/parts";
 import PartsImportPage from "@/pages/parts-import";
 import AdminCategoriesPage from "@/pages/admin-categories";
 import AdminPartsPage from "@/pages/admin-parts";
+import AdminFeatureFlagsPage from "@/pages/admin-feature-flags";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +48,16 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function FlaggedRoute({ flag, component: Component, adminOnly = false, ...props }: { flag: string; component: React.ComponentType<any>; adminOnly?: boolean; [key: string]: any }) {
+  const { userRole } = useAuth();
+  const { isEnabled } = useFeatureFlags();
+  // Superadmins bypass all flags
+  if (userRole !== "superadmin" && !isEnabled(flag)) {
+    return <Redirect to="/" />;
+  }
+  return <ProtectedRoute component={Component} adminOnly={adminOnly} {...props} />;
+}
 
 function ProtectedRoute({ component: Component, adminOnly = false, ...props }: { component: React.ComponentType<any>; adminOnly?: boolean; [key: string]: any }) {
   const { isAuthenticated, isLoading, userRole } = useAuth();
@@ -163,14 +175,6 @@ function AppRouter() {
           <ProtectedRoute component={AdminRemindersPage} adminOnly />
         </Route>
 
-        <Route path="/admin/reports">
-          <ProtectedRoute component={AdminReportsPage} adminOnly />
-        </Route>
-
-        <Route path="/admin/report-builder">
-          <ProtectedRoute component={AdminReportBuilderPage} adminOnly />
-        </Route>
-
         <Route path="/admin/bug-reports">
           <ProtectedRoute component={AdminBugReportsPage} adminOnly />
         </Route>
@@ -179,20 +183,36 @@ function AppRouter() {
           <ProtectedRoute component={AdminEmailLogsPage} adminOnly />
         </Route>
 
+        <Route path="/admin/feature-flags">
+          <ProtectedRoute component={AdminFeatureFlagsPage} adminOnly />
+        </Route>
+
         <Route path="/admin/parts">
-          <ProtectedRoute component={AdminPartsPage} adminOnly />
+          <FlaggedRoute flag="parts_catalog_admin" component={AdminPartsPage} adminOnly />
         </Route>
 
         <Route path="/admin/categories">
-          <ProtectedRoute component={AdminCategoriesPage} adminOnly />
+          <FlaggedRoute flag="parts_catalog_admin" component={AdminCategoriesPage} adminOnly />
+        </Route>
+
+        <Route path="/admin/reports">
+          <FlaggedRoute flag="reports" component={AdminReportsPage} adminOnly />
+        </Route>
+
+        <Route path="/admin/report-builder">
+          <FlaggedRoute flag="reports" component={AdminReportBuilderPage} adminOnly />
         </Route>
 
         <Route path="/parts/import">
-          <ProtectedRoute component={PartsImportPage} adminOnly />
+          <FlaggedRoute flag="parts_import" component={PartsImportPage} adminOnly />
         </Route>
 
         <Route path="/parts">
-          <ProtectedRoute component={PartsPage} />
+          <FlaggedRoute flag="price_lookup" component={PartsPage} />
+        </Route>
+
+        <Route path="/following">
+          <FlaggedRoute flag="following" component={FollowingPage} />
         </Route>
 
         <Route path="/settings">
@@ -207,10 +227,6 @@ function AppRouter() {
           <ProtectedRoute component={TeamPage} />
         </Route>
 
-        <Route path="/following">
-          <ProtectedRoute component={FollowingPage} />
-        </Route>
-
         <Route path="/guide">
           <ProtectedRoute component={GuidePage} />
         </Route>
@@ -221,6 +237,16 @@ function AppRouter() {
   );
 }
 
+function AppWithFlags() {
+  const { isAuthenticated } = useAuth();
+  return (
+    <FeatureFlagsProvider isAuthenticated={isAuthenticated}>
+      <AppRouter />
+      <BrandingEditor />
+    </FeatureFlagsProvider>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -228,8 +254,7 @@ function App() {
         <AppSettingsProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <AuthProvider>
-              <AppRouter />
-              <BrandingEditor />
+              <AppWithFlags />
             </AuthProvider>
           </WouterRouter>
           <Toaster />

@@ -19,6 +19,7 @@ import productCategoriesRouter from "./product-categories";
 import partsRouter from "./parts";
 import partsImportRouter from "./parts-import";
 import accountCustomPricesRouter from "./account-custom-prices";
+import featureFlagsRouter from "./feature-flags";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(productCategoriesRouter);
 router.use(partsRouter);
 router.use(partsImportRouter);
 router.use(accountCustomPricesRouter);
+router.use(featureFlagsRouter);
 
 export default router;

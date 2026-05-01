@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings } from "@/contexts/app-settings";
+import { useFeatureFlags } from "@/contexts/feature-flags";
 import { getToken } from "@/lib/api";
 import {
   LayoutDashboard,
@@ -24,28 +25,36 @@ import {
   BarChart2,
   Package,
   Tag,
+  ToggleRight,
 } from "lucide-react";
 import { BugReportModal } from "@/components/BugReportModal";
 
-const navItems = [
+interface NavItem {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+  flag?: string;
+}
+
+const navItems: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "My Leads", icon: TrendingUp, href: "/leads" },
   { label: "Customers", icon: Building2, href: "/customers" },
-  { label: "Price Lookup", icon: Package, href: "/parts" },
-  { label: "Following", icon: BellRing, href: "/following" },
+  { label: "Price Lookup", icon: Package, href: "/parts", flag: "price_lookup" },
+  { label: "Following", icon: BellRing, href: "/following", flag: "following" },
   { label: "Messages", icon: MessageSquare, href: "/team" },
   { label: "Reminders", icon: Bell, href: "/reminders" },
   { label: "Settings", icon: Settings, href: "/settings" },
   { label: "User Guide", icon: BookOpen, href: "/guide" },
 ];
 
-const adminItems = [
+const adminItems: NavItem[] = [
   { label: "Manage Users", icon: Users, href: "/admin/users" },
-  { label: "Parts Catalog", icon: Package, href: "/admin/parts" },
-  { label: "Categories", icon: Tag, href: "/admin/categories" },
+  { label: "Parts Catalog", icon: Package, href: "/admin/parts", flag: "parts_catalog_admin" },
+  { label: "Categories", icon: Tag, href: "/admin/categories", flag: "parts_catalog_admin" },
   { label: "Reminders", icon: Bell, href: "/admin/reminders" },
-  { label: "Reports", icon: FileText, href: "/admin/reports" },
-  { label: "Report Builder", icon: BarChart2, href: "/admin/report-builder" },
+  { label: "Reports", icon: FileText, href: "/admin/reports", flag: "reports" },
+  { label: "Report Builder", icon: BarChart2, href: "/admin/report-builder", flag: "reports" },
   { label: "Bug Reports", icon: Bug, href: "/admin/bug-reports" },
   { label: "Email Log", icon: Mail, href: "/admin/email-logs" },
 ];
@@ -76,12 +85,20 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const [location] = useLocation();
   const { userEmail, userRole, staffId, logout } = useAuth();
   const { settings } = useAppSettings();
+  const { isEnabled } = useFeatureFlags();
   const [showBugReport, setShowBugReport] = useState(false);
   const dmUnread = useDmUnreadCount();
+  const isSuperAdmin = userRole === "superadmin";
 
   function isActive(href: string) {
     if (href === "/") return location === "/";
     return location.startsWith(href);
+  }
+
+  function isItemVisible(item: NavItem): boolean {
+    if (isSuperAdmin) return true;
+    if (!item.flag) return true;
+    return isEnabled(item.flag);
   }
 
   return (
@@ -99,7 +116,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           <div>
             <div className="font-bold text-sm text-white tracking-wide">{settings.companyName}</div>
             <div className="text-xs text-sidebar-foreground/50">
-              {userRole === "admin" ? "Administrator" : "Sales Portal"}
+              {userRole === "admin" ? "Administrator" : userRole === "superadmin" ? "Super Admin" : "Sales Portal"}
             </div>
           </div>
         </div>
@@ -123,7 +140,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           <span>Quick Entry</span>
         </Link>
 
-        {navItems.map((item) => {
+        {navItems.filter(isItemVisible).map((item) => {
           const active = isActive(item.href);
           const showDot = item.href === "/team" && dmUnread > 0;
           return (
@@ -137,7 +154,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                   ? "bg-accent text-accent-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               )}
-              data-testid={`nav-admin-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+              data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
             >
               <div className="relative flex-shrink-0">
                 <item.icon className="w-4 h-4" />
@@ -163,7 +180,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                 Admin
               </div>
             </div>
-            {adminItems.map((item) => {
+            {adminItems.filter(isItemVisible).map((item) => {
               const active = isActive(item.href);
               return (
                 <Link
@@ -180,24 +197,43 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                 >
                   <item.icon className="w-4 h-4 flex-shrink-0" />
                   <span>{item.label}</span>
+                  {active && <ChevronRight className="w-3 h-3 ml-auto opacity-50" />}
                 </Link>
               );
             })}
-            {userRole === "superadmin" && (
-              <Link
-                href="/setup"
-                onClick={onClose}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
-                  isActive("/setup")
-                    ? "bg-accent text-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                )}
-                data-testid="nav-system-config"
-              >
-                <SlidersHorizontal className="w-4 h-4 flex-shrink-0" />
-                <span>System Config</span>
-              </Link>
+            {isSuperAdmin && (
+              <>
+                <Link
+                  href="/admin/feature-flags"
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                    isActive("/admin/feature-flags")
+                      ? "bg-accent text-accent-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                  data-testid="nav-admin-feature-flags"
+                >
+                  <ToggleRight className="w-4 h-4 flex-shrink-0" />
+                  <span>Feature Flags</span>
+                  {isActive("/admin/feature-flags") && <ChevronRight className="w-3 h-3 ml-auto opacity-50" />}
+                </Link>
+                <Link
+                  href="/setup"
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                    isActive("/setup")
+                      ? "bg-accent text-accent-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                  data-testid="nav-system-config"
+                >
+                  <SlidersHorizontal className="w-4 h-4 flex-shrink-0" />
+                  <span>System Config</span>
+                  {isActive("/setup") && <ChevronRight className="w-3 h-3 ml-auto opacity-50" />}
+                </Link>
+              </>
             )}
           </>
         )}
