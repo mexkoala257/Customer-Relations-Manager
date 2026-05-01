@@ -7,10 +7,31 @@ import { cn } from "@/lib/utils";
 import {
   MessageSquare, Zap, ImageIcon, FileText, Video,
   Send, Trash2, Loader2, Upload, X, FileDown, Play, Monitor,
-  Mail, Inbox, ChevronDown,
+  Mail, Inbox, ChevronDown, Link2, Copy, Check,
 } from "lucide-react";
 
 const API = (path: string) => `/api/team/${path}`;
+const FULL_URL = (path: string) => `${window.location.origin}/api/team/${path}`;
+
+function EndpointFooter({ path }: { path: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = FULL_URL(path);
+  function copy() {
+    navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  }
+  return (
+    <div className="mt-6 flex items-center gap-2 px-4 py-3 bg-muted/50 border border-border/60 rounded-xl text-xs text-muted-foreground">
+      <Link2 className="w-3.5 h-3.5 flex-shrink-0" />
+      <span className="font-medium mr-1">JSON endpoint:</span>
+      <a href={url} target="_blank" rel="noopener noreferrer"
+        className="font-mono truncate text-primary hover:underline underline-offset-2 flex-1 min-w-0"
+        data-testid="endpoint-url">{url}</a>
+      <button onClick={copy} className="flex-shrink-0 p-1.5 rounded-lg hover:bg-muted transition" title="Copy URL">
+        {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
+    </div>
+  );
+}
 
 function authHeaders(contentType = "application/json") {
   return { "Content-Type": contentType, Authorization: `Bearer ${getToken()}` };
@@ -24,9 +45,21 @@ function formatTime(iso: string) {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
   const diffH = diffMs / 3600000;
-  if (diffH < 24) return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: diffH > 8760 ? "numeric" : undefined });
+  const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? "" : "s"} ago`;
+  if (diffH < 2) return "1 hour ago";
+  if (diffH < 24) return `${Math.floor(diffH)} hours ago`;
+
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  if (d >= yesterdayStart && d < todayStart) return `Yesterday at ${timeStr}`;
+  if (diffH < 8760) return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ` at ${timeStr}`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + ` at ${timeStr}`;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -155,6 +188,7 @@ function MessagesTab({ userEmail, userId, isAdmin }: { userEmail: string; userId
           ))}
         </div>
       )}
+      <EndpointFooter path="messages" />
     </div>
   );
 }
@@ -261,6 +295,7 @@ function UpdatesTab({ userId, isAdmin }: { userId: string; isAdmin: boolean }) {
           ))}
         </div>
       )}
+      <EndpointFooter path="updates" />
     </div>
   );
 }
