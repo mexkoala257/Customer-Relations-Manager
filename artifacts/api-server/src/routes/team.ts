@@ -58,11 +58,16 @@ router.get("/team/messages", async (_req, res): Promise<void> => {
       createdAt: teamMessagesTable.createdAt,
       userId: teamMessagesTable.userId,
       authorEmail: usersTable.email,
+      authorName: usersTable.fullName,
     })
     .from(teamMessagesTable)
     .leftJoin(usersTable, eq(teamMessagesTable.userId, usersTable.id))
     .orderBy(desc(teamMessagesTable.createdAt));
-  res.json(rows.map((r) => ({ ...r, createdAt: formatDate(r.createdAt) })));
+  res.json(rows.map((r) => ({
+    ...r,
+    createdAt: formatDate(r.createdAt),
+    author: r.authorName || r.authorEmail?.split("@")[0] || "Unknown",
+  })));
 });
 
 router.post("/team/messages", requireAuth, async (req, res): Promise<void> => {
@@ -100,11 +105,16 @@ router.get("/team/updates", async (_req, res): Promise<void> => {
       createdAt: teamUpdatesTable.createdAt,
       userId: teamUpdatesTable.userId,
       authorEmail: usersTable.email,
+      authorName: usersTable.fullName,
     })
     .from(teamUpdatesTable)
     .leftJoin(usersTable, eq(teamUpdatesTable.userId, usersTable.id))
     .orderBy(desc(teamUpdatesTable.createdAt));
-  res.json(rows.map((r) => ({ ...r, createdAt: formatDate(r.createdAt) })));
+  res.json(rows.map((r) => ({
+    ...r,
+    createdAt: formatDate(r.createdAt),
+    author: r.authorName || r.authorEmail?.split("@")[0] || "Unknown",
+  })));
 });
 
 router.post("/team/updates", requireAuth, async (req, res): Promise<void> => {
