@@ -41,25 +41,8 @@ async function apiFetch(url: string, options: RequestInit = {}) {
   return fetch(url, { ...options, headers: { ...authHeaders(), ...(options.headers as Record<string, string> ?? {}) } });
 }
 
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffH = diffMs / 3600000;
-  const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? "" : "s"} ago`;
-  if (diffH < 2) return "1 hour ago";
-  if (diffH < 24) return `${Math.floor(diffH)} hours ago`;
-
-  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-  const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-
-  if (d >= yesterdayStart && d < todayStart) return `Yesterday at ${timeStr}`;
-  if (diffH < 8760) return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ` at ${timeStr}`;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + ` at ${timeStr}`;
+function formatTime(value: string) {
+  return value || "";
 }
 
 const STATUS_STYLES: Record<string, string> = {
