@@ -12,6 +12,19 @@ function canDelete(userId: string, ownerId: string, role: string) {
   return role === "admin" || role === "superadmin" || userId === ownerId;
 }
 
+function formatDate(date: Date | string | null): string {
+  if (!date) return "";
+  const d = new Date(date as string);
+  return d.toLocaleString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 // ── Video upload setup ─────────────────────────────────────────────────────────
 
 const VIDEOS_DIR = path.join(process.cwd(), "uploads", "videos");
@@ -49,7 +62,7 @@ router.get("/team/messages", async (_req, res): Promise<void> => {
     .from(teamMessagesTable)
     .leftJoin(usersTable, eq(teamMessagesTable.userId, usersTable.id))
     .orderBy(desc(teamMessagesTable.createdAt));
-  res.json(rows);
+  res.json(rows.map((r) => ({ ...r, createdAt: formatDate(r.createdAt) })));
 });
 
 router.post("/team/messages", requireAuth, async (req, res): Promise<void> => {
@@ -91,7 +104,7 @@ router.get("/team/updates", async (_req, res): Promise<void> => {
     .from(teamUpdatesTable)
     .leftJoin(usersTable, eq(teamUpdatesTable.userId, usersTable.id))
     .orderBy(desc(teamUpdatesTable.createdAt));
-  res.json(rows);
+  res.json(rows.map((r) => ({ ...r, createdAt: formatDate(r.createdAt) })));
 });
 
 router.post("/team/updates", requireAuth, async (req, res): Promise<void> => {
