@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { getToken } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Bug, Trash2, Loader2, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { Bug, Trash2, Loader2, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, Clock, StickyNote, Save } from "lucide-react";
 
 type Severity = "low" | "medium" | "high";
 type Status = "open" | "in_progress" | "resolved";
@@ -15,6 +15,7 @@ type BugReport = {
   severity: Severity;
   pageUrl: string | null;
   status: Status;
+  adminNotes: string | null;
   createdAt: string;
   reporterEmail: string | null;
 };
@@ -61,6 +62,8 @@ export default function AdminBugReportsPage() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [updating, setUpdating] = useState<number | null>(null);
+  const [notesDraft, setNotesDraft] = useState<Record<number, string>>({});
+  const [savingNotes, setSavingNotes] = useState<number | null>(null);
 
   useEffect(() => {
     load();
@@ -89,6 +92,22 @@ export default function AdminBugReportsPage() {
       toast({ title: "Failed to update status", variant: "destructive" });
     }
     setUpdating(null);
+  }
+
+  async function saveNotes(id: number) {
+    setSavingNotes(id);
+    const notes = notesDraft[id] ?? (reports.find(r => r.id === id)?.adminNotes || "");
+    const r = await apiFetch(`/api/bug-reports/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ adminNotes: notes }),
+    });
+    if (r.ok) {
+      setReports((prev) => prev.map((rep) => rep.id === id ? { ...rep, adminNotes: notes } : rep));
+      toast({ title: "Notes saved" });
+    } else {
+      toast({ title: "Failed to save notes", variant: "destructive" });
+    }
+    setSavingNotes(null);
   }
 
   async function del(id: number) {
@@ -202,6 +221,38 @@ export default function AdminBugReportsPage() {
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Description</p>
                         <p className="text-sm whitespace-pre-wrap leading-relaxed">{rep.description}</p>
                       </div>
+                      {/* Admin Notes */}
+                      <div className="rounded-xl border border-border bg-muted/20 overflow-hidden">
+                        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
+                          <StickyNote className="w-3.5 h-3.5 text-accent" />
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Admin Notes</span>
+                          {rep.adminNotes && (
+                            <span className="ml-auto text-xs text-accent font-medium">Saved</span>
+                          )}
+                        </div>
+                        <div className="p-3 space-y-2">
+                          <textarea
+                            rows={4}
+                            placeholder="Add internal notes about this bug — steps to reproduce, root cause, fix applied, etc."
+                            value={notesDraft[rep.id] ?? (rep.adminNotes || "")}
+                            onChange={(e) => setNotesDraft((prev) => ({ ...prev, [rep.id]: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                          />
+                          <div className="flex justify-end">
+                            <button
+                              onClick={() => saveNotes(rep.id)}
+                              disabled={savingNotes === rep.id}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:opacity-90 disabled:opacity-50 transition"
+                            >
+                              {savingNotes === rep.id
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Save className="w-3.5 h-3.5" />}
+                              Save Notes
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="flex items-center gap-3 flex-wrap">
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground">Status:</span>

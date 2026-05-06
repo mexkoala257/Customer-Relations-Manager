@@ -9,5 +9,6 @@ export const bugReportsTable = pgTable("bug_reports", {
   severity: text("severity", { enum: ["low", "medium", "high"] }).notNull().default("medium"),
   pageUrl: text("page_url"),
   status: text("status", { enum: ["open", "in_progress", "resolved"] }).notNull().default("open"),
+  adminNotes: text("admin_notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -71,6 +71,7 @@ router.get("/bug-reports", requireAuth, requireAdmin, async (_req, res): Promise
       severity: bugReportsTable.severity,
       pageUrl: bugReportsTable.pageUrl,
       status: bugReportsTable.status,
+      adminNotes: bugReportsTable.adminNotes,
       createdAt: bugReportsTable.createdAt,
       userId: bugReportsTable.userId,
       reporterEmail: usersTable.email,
@@ -81,17 +82,29 @@ router.get("/bug-reports", requireAuth, requireAdmin, async (_req, res): Promise
   res.json(rows);
 });
 
-// ── Update status (admin only) ────────────────────────────────────────────────
+// ── Update status and/or notes (admin only) ───────────────────────────────────
 
 router.patch("/bug-reports/:id", requireAuth, requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
-  const { status } = req.body;
-  const validStatuses = ["open", "in_progress", "resolved"];
-  if (!validStatuses.includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
+  const { status, adminNotes } = req.body;
+
+  const update: Record<string, unknown> = {};
+
+  if (status !== undefined) {
+    const validStatuses = ["open", "in_progress", "resolved"];
+    if (!validStatuses.includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
+    update.status = status;
+  }
+
+  if (adminNotes !== undefined) {
+    update.adminNotes = adminNotes ?? null;
+  }
+
+  if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
 
   const [row] = await db
     .update(bugReportsTable)
-    .set({ status })
+    .set(update)
     .where(eq(bugReportsTable.id, id))
     .returning();
 
