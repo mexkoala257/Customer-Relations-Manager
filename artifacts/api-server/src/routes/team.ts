@@ -75,7 +75,10 @@ router.get("/team/messages", async (_req, res): Promise<void> => {
     userId: r.userId,
   }));
   const enabledKeys = config.fields.filter((f) => f.enabled).map((f) => f.key);
-  res.json(all.map((row) => Object.fromEntries(enabledKeys.map((k) => [k, row[k]]))));
+  // id and userId are always included — the portal needs them for delete/ownership checks
+  const requiredKeys = ["id", "userId"];
+  const finalKeys = [...new Set([...requiredKeys, ...enabledKeys])];
+  res.json(all.map((row) => Object.fromEntries(finalKeys.map((k) => [k, row[k]]))));
 });
 
 router.post("/team/messages", requireAuth, async (req, res): Promise<void> => {
@@ -130,7 +133,10 @@ router.get("/team/updates", async (_req, res): Promise<void> => {
     userId: r.userId,
   }));
   const enabledKeys = config.fields.filter((f) => f.enabled).map((f) => f.key);
-  res.json(all.map((row) => Object.fromEntries(enabledKeys.map((k) => [k, row[k]]))));
+  // id and userId are always included — the portal needs them for delete/ownership checks
+  const requiredKeys = ["id", "userId"];
+  const finalKeys = [...new Set([...requiredKeys, ...enabledKeys])];
+  res.json(all.map((row) => Object.fromEntries(finalKeys.map((k) => [k, row[k]]))));
 });
 
 router.post("/team/updates", requireAuth, async (req, res): Promise<void> => {
