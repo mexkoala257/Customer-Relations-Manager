@@ -21,6 +21,7 @@ import partsImportRouter from "./parts-import";
 import accountCustomPricesRouter from "./account-custom-prices";
 import featureFlagsRouter from "./feature-flags";
 import feedConfigRouter from "./feed-config";
+import leadRequirementsRouter from "./lead-requirements";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(partsImportRouter);
 router.use(accountCustomPricesRouter);
 router.use(featureFlagsRouter);
 router.use(feedConfigRouter);
+router.use(leadRequirementsRouter);
 
 export default router;

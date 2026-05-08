@@ -40,6 +40,7 @@ import AdminCategoriesPage from "@/pages/admin-categories";
 import AdminPartsPage from "@/pages/admin-parts";
 import AdminFeatureFlagsPage from "@/pages/admin-feature-flags";
 import AdminFeedEditorPage from "@/pages/admin-feed-editor";
+import AdminLeadRequirementsPage from "@/pages/admin-lead-requirements";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -190,6 +191,10 @@ function AppRouter() {
 
         <Route path="/admin/feed-editor">
           <ProtectedRoute component={AdminFeedEditorPage} adminOnly />
+        </Route>
+
+        <Route path="/admin/lead-requirements">
+          <ProtectedRoute component={AdminLeadRequirementsPage} adminOnly />
         </Route>
 
         <Route path="/admin/parts">

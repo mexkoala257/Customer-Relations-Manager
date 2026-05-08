@@ -27,6 +27,7 @@ import {
   Tag,
   ToggleRight,
   Rss,
+  ClipboardList,
 } from "lucide-react";
 import { BugReportModal } from "@/components/BugReportModal";
 
@@ -56,6 +57,7 @@ const adminItems: NavItem[] = [
   { label: "Reminders", icon: Bell, href: "/admin/reminders" },
   { label: "Reports", icon: FileText, href: "/admin/reports", flag: "reports" },
   { label: "Report Builder", icon: BarChart2, href: "/admin/report-builder", flag: "reports" },
+  { label: "Lead Requirements", icon: ClipboardList, href: "/admin/lead-requirements" },
   { label: "Bug Reports", icon: Bug, href: "/admin/bug-reports" },
   { label: "Email Log", icon: Mail, href: "/admin/email-logs" },
 ];

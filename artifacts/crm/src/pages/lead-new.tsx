@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   useCreateLead,
@@ -8,10 +8,32 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save, AlertTriangle } from "lucide-react";
+import { getToken } from "@/lib/api";
 
 import { LEAD_STATUSES } from "@/lib/lead-status";
 const STATUS_OPTIONS = [...LEAD_STATUSES];
+
+type FieldConfig = { required: boolean; minChars?: number };
+type LeadRequirementsConfig = {
+  contactDate: FieldConfig;
+  followUpDate: FieldConfig;
+  currentSupplier: FieldConfig;
+  temperature: FieldConfig;
+  productsDiscussed: FieldConfig;
+  notes: FieldConfig;
+};
+
+const CONFIG_DEFAULTS: LeadRequirementsConfig = {
+  contactDate:       { required: false },
+  followUpDate:      { required: true },
+  currentSupplier:   { required: false },
+  temperature:       { required: false },
+  productsDiscussed: { required: false },
+  notes:             { required: false, minChars: 0 },
+};
+
+function req(cfg: FieldConfig | undefined) { return cfg?.required ?? false; }
 
 export default function LeadNewPage() {
   const [, navigate] = useLocation();
@@ -27,7 +49,19 @@ export default function LeadNewPage() {
   const [temperature, setTemperature] = useState<"" | "Hot" | "Medium" | "Cold">("");
   const [productsDiscussed, setProductsDiscussed] = useState("");
 
+  const [fieldCfg, setFieldCfg] = useState<LeadRequirementsConfig>(CONFIG_DEFAULTS);
+  const [showNotesWarning, setShowNotesWarning] = useState(false);
+
   const { data: customers } = useListCustomers();
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch("/api/lead-requirements", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d: LeadRequirementsConfig) => setFieldCfg({ ...CONFIG_DEFAULTS, ...d }))
+      .catch(() => {});
+  }, []);
 
   const createMutation = useCreateLead({
     mutation: {
@@ -45,6 +79,14 @@ export default function LeadNewPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!customerId) return;
+
+    const minChars = fieldCfg.notes.minChars ?? 0;
+    if (minChars > 0 && notes.length < minChars) {
+      setShowNotesWarning(true);
+    } else {
+      setShowNotesWarning(false);
+    }
+
     createMutation.mutate({
       data: {
         customerId,
@@ -61,6 +103,17 @@ export default function LeadNewPage() {
     });
   }
 
+  const minChars = fieldCfg.notes.minChars ?? 0;
+  const notesShort = minChars > 0 && notes.length < minChars;
+
+  function label(text: string, isRequired: boolean) {
+    return (
+      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        {text} {isRequired && <span className="text-destructive">*</span>}
+      </label>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="p-6 max-w-xl mx-auto">
@@ -71,12 +124,22 @@ export default function LeadNewPage() {
           <h1 className="text-xl font-bold" data-testid="new-lead-title">New Lead</h1>
         </div>
 
+        {/* Notes warning banner */}
+        {showNotesWarning && (
+          <div className="mb-4 flex items-start gap-3 px-4 py-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 text-sm">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>
+              Notes are below the recommended minimum of <strong>{minChars} characters</strong>. More detail helps the team — but your lead has been saved.
+            </span>
+          </div>
+        )}
+
         <div className="bg-card border border-card-border rounded-xl p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Customer — always required */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Customer *
-              </label>
+              {label("Customer", true)}
               <select
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
@@ -93,10 +156,9 @@ export default function LeadNewPage() {
               </select>
             </div>
 
+            {/* Status — always required */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Status
-              </label>
+              {label("Status", true)}
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
@@ -109,54 +171,53 @@ export default function LeadNewPage() {
               </select>
             </div>
 
+            {/* Contact Date */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Contact Date
-              </label>
+              {label("Contact Date", req(fieldCfg.contactDate))}
               <input
                 type="date"
                 value={contactDate}
                 onChange={(e) => setContactDate(e.target.value)}
+                required={req(fieldCfg.contactDate)}
                 className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 data-testid="lead-contact-date"
               />
             </div>
 
+            {/* Follow-up Date */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Follow-up Date <span className="text-destructive">*</span>
-              </label>
+              {label("Follow-up Date", req(fieldCfg.followUpDate))}
               <input
                 type="date"
                 value={followUpDate}
                 onChange={(e) => setFollowUpDate(e.target.value)}
-                required
+                required={req(fieldCfg.followUpDate)}
                 className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 data-testid="lead-followup-date"
               />
             </div>
 
+            {/* Current Supplier */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Current Supplier
-              </label>
+              {label("Current Supplier", req(fieldCfg.currentSupplier))}
               <input
                 type="text"
                 value={currentSupplier}
                 onChange={(e) => setCurrentSupplier(e.target.value)}
+                required={req(fieldCfg.currentSupplier)}
                 placeholder="Who are they currently buying from?"
                 className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 data-testid="lead-current-supplier"
               />
             </div>
 
+            {/* Temperature */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Temperature
-              </label>
+              {label("Temperature", req(fieldCfg.temperature))}
               <select
                 value={temperature}
                 onChange={(e) => setTemperature(e.target.value as "" | "Hot" | "Medium" | "Cold")}
+                required={req(fieldCfg.temperature)}
                 className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 data-testid="lead-temperature"
               >
@@ -167,13 +228,13 @@ export default function LeadNewPage() {
               </select>
             </div>
 
+            {/* Products & Pricing Discussed */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Products &amp; Pricing Discussed
-              </label>
+              {label("Products & Pricing Discussed", req(fieldCfg.productsDiscussed))}
               <textarea
                 value={productsDiscussed}
                 onChange={(e) => setProductsDiscussed(e.target.value)}
+                required={req(fieldCfg.productsDiscussed)}
                 rows={3}
                 placeholder="List products and pricing discussed..."
                 className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
@@ -181,18 +242,26 @@ export default function LeadNewPage() {
               />
             </div>
 
+            {/* Notes */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Notes
-              </label>
+              {label("Notes", req(fieldCfg.notes))}
               <textarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => { setNotes(e.target.value); if (showNotesWarning) setShowNotesWarning(false); }}
+                required={req(fieldCfg.notes)}
                 rows={4}
                 placeholder="Add notes about this interaction..."
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                className={`w-full px-4 py-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none ${
+                  notesShort && showNotesWarning ? "border-amber-400 dark:border-amber-600" : "border-input"
+                }`}
                 data-testid="lead-notes"
               />
+              {minChars > 0 && (
+                <div className={`flex justify-between text-xs ${notesShort ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+                  <span>{notesShort ? `${minChars - notes.length} more characters recommended` : "Minimum met"}</span>
+                  <span>{notes.length} / {minChars}</span>
+                </div>
+              )}
             </div>
 
             <button
