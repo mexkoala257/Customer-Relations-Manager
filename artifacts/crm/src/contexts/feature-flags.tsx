@@ -6,68 +6,82 @@ export interface FlagDef {
   label: string;
   description: string;
   affectsRoles: "all" | "non-admin";
+  defaultRoles: string[];
 }
+
+export const ALL_ROLES = ["admin", "sales", "data-entry"] as const;
+export type AppRole = typeof ALL_ROLES[number];
 
 export const FLAG_DEFINITIONS: FlagDef[] = [
   {
     key: "price_lookup",
     label: "Price Lookup Tool",
-    description: "Shows the Price Lookup page in the sidebar and enables the /parts route for all users.",
+    description: "Shows the Price Lookup page in the sidebar and enables the /parts route.",
     affectsRoles: "all",
+    defaultRoles: ["admin", "sales", "data-entry"],
   },
   {
     key: "parts_import",
     label: "Parts Import",
     description: "Enables the Parts Import page (/parts/import) for uploading CSV and PDF price sheets.",
     affectsRoles: "all",
+    defaultRoles: ["admin", "sales", "data-entry"],
   },
   {
     key: "parts_catalog_admin",
     label: "Parts Catalog Admin",
     description: "Shows the Parts Catalog and Categories management pages in the admin section.",
     affectsRoles: "all",
+    defaultRoles: ["admin", "sales", "data-entry"],
   },
   {
     key: "reports",
     label: "Reports & Analytics",
     description: "Shows the Reports and Report Builder pages in the admin section.",
     affectsRoles: "all",
+    defaultRoles: ["admin", "sales", "data-entry"],
   },
   {
     key: "following",
     label: "Following / Watch List",
     description: "Shows the Following page where users track watched leads and customers.",
     affectsRoles: "all",
+    defaultRoles: ["admin", "sales", "data-entry"],
   },
   {
     key: "team_portal",
     label: "Team Portal & Messages",
-    description: "Shows the Messages tab in the sidebar, giving users access to team messages, updates, photos, and documents.",
+    description: "Shows the Messages tab and gives access to team messages, updates, photos, and documents.",
     affectsRoles: "all",
+    defaultRoles: ["admin", "sales", "data-entry"],
   },
   {
     key: "direct_messages",
     label: "Direct Messages",
-    description: "Enables the Direct Messages feature within the Team Portal including the inbox, sent box, and unread badge.",
+    description: "Enables the Direct Messages feature including the inbox, sent box, and unread badge.",
     affectsRoles: "all",
+    defaultRoles: ["admin", "sales", "data-entry"],
   },
   {
     key: "quick_entry",
     label: "Quick Entry",
     description: "Shows the Quick Entry shortcut button at the top of the sidebar for fast lead creation.",
     affectsRoles: "all",
+    defaultRoles: ["admin", "sales", "data-entry"],
   },
   {
     key: "reminders",
     label: "Personal Reminders",
-    description: "Shows the Reminders page in the sidebar where users manage their own reminder schedule.",
+    description: "Shows the Reminders page where users manage their own reminder schedule.",
     affectsRoles: "all",
+    defaultRoles: ["admin", "sales", "data-entry"],
   },
   {
     key: "user_guide",
     label: "User Guide",
     description: "Shows the User Guide link in the sidebar.",
     affectsRoles: "all",
+    defaultRoles: ["admin", "sales", "data-entry"],
   },
 ];
 
