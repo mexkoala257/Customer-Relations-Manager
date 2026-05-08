@@ -50,7 +50,7 @@ export default function LeadNewPage() {
   const [productsDiscussed, setProductsDiscussed] = useState("");
 
   const [fieldCfg, setFieldCfg] = useState<LeadRequirementsConfig>(CONFIG_DEFAULTS);
-  const [showNotesWarning, setShowNotesWarning] = useState(false);
+  const [notesTouched, setNotesTouched] = useState(false);
 
   const { data: customers } = useListCustomers();
 
@@ -80,13 +80,6 @@ export default function LeadNewPage() {
     e.preventDefault();
     if (!customerId) return;
 
-    const minChars = fieldCfg.notes.minChars ?? 0;
-    if (minChars > 0 && notes.length < minChars) {
-      setShowNotesWarning(true);
-    } else {
-      setShowNotesWarning(false);
-    }
-
     createMutation.mutate({
       data: {
         customerId,
@@ -105,6 +98,7 @@ export default function LeadNewPage() {
 
   const minChars = fieldCfg.notes.minChars ?? 0;
   const notesShort = minChars > 0 && notes.length < minChars;
+  const showNotesWarning = notesTouched && notesShort;
 
   function label(text: string, isRequired: boolean) {
     return (
@@ -247,7 +241,7 @@ export default function LeadNewPage() {
               {label("Notes", req(fieldCfg.notes))}
               <textarea
                 value={notes}
-                onChange={(e) => { setNotes(e.target.value); if (showNotesWarning) setShowNotesWarning(false); }}
+                onChange={(e) => { setNotes(e.target.value); setNotesTouched(true); }}
                 required={req(fieldCfg.notes)}
                 rows={4}
                 placeholder="Add notes about this interaction..."
