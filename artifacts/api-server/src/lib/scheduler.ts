@@ -207,7 +207,7 @@ export async function buildSummaryReportData(sections: ReportSection[]) {
   const queries: Promise<any>[] = [];
   const keys: string[] = [];
 
-  queries.push(db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.fullName }).from(usersTable));
+  queries.push(db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.fullName, role: usersTable.role }).from(usersTable));
   keys.push("allUsers");
 
   // Recent Activity
@@ -278,7 +278,7 @@ export async function buildSummaryReportData(sections: ReportSection[]) {
   }
 
   return {
-    allUsers: data.allUsers as { id: string; email: string; name: string | null }[],
+    allUsers: data.allUsers as { id: string; email: string; name: string | null; role: string }[],
     recentLeads: (data.recentLeads as any[]).map((l) => ({ ...l, updatedAt: l.updatedAt instanceof Date ? l.updatedAt.toISOString().slice(0, 10) : String(l.updatedAt).slice(0, 10) })),
     upcomingLeads: (data.upcomingLeads as any[]).filter((l) => l.followUpDate !== null) as any[],
     overdueLeads: (data.overdueLeads as any[]).filter((l) => l.followUpDate !== null) as any[],
@@ -314,15 +314,33 @@ export async function runSummaryEmails(): Promise<{ emailsSent: number; logs: st
   let emailsSent = 0;
   for (const user of data.allUsers) {
     const recipientName = user.name || user.email.split("@")[0];
+    const isAdmin = user.role === "admin" || user.role === "superadmin";
+
+    // Admins see all leads (grouped by rep in the template).
+    // Sales/data-entry reps see only their own leads.
+    const recentLeads = isAdmin
+      ? data.recentLeads
+      : data.recentLeads.filter((l) => l.repEmail === user.email);
+    const upcomingLeads = isAdmin
+      ? data.upcomingLeads
+      : data.upcomingLeads.filter((l) => l.repEmail === user.email);
+    const overdueLeads = isAdmin
+      ? data.overdueLeads
+      : data.overdueLeads.filter((l) => l.repEmail === user.email);
+    const wonLeads = isAdmin
+      ? data.wonLeads
+      : data.wonLeads.filter((l) => l.repEmail === user.email);
+
     const result = await sendSummaryEmail({
       toEmail: user.email,
       recipientName,
       periodLabel: `${periodLabel} Morning`,
       sections,
-      recentLeads: data.recentLeads,
-      upcomingLeads: data.upcomingLeads,
-      overdueLeads: data.overdueLeads,
-      wonLeads: data.wonLeads,
+      isAdmin,
+      recentLeads,
+      upcomingLeads,
+      overdueLeads,
+      wonLeads,
       pipelineCounts: data.pipelineCounts,
       topPerformers: data.topPerformers,
     });

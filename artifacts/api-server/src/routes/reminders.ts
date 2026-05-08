@@ -60,6 +60,7 @@ router.post("/admin/reminders/preview-report", requireAdmin, async (req, res) =>
     toEmail,
     recipientName: toEmail.split("@")[0],
     periodLabel: "Preview",
+    isAdmin: true,
     sections: activeSections,
     recentLeads: data.recentLeads,
     upcomingLeads: data.upcomingLeads,

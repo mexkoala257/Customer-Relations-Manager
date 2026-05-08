@@ -336,6 +336,7 @@ export async function sendSummaryEmail(opts: {
   toEmail: string;
   recipientName: string;
   periodLabel: string;
+  isAdmin?: boolean;
   sections?: ReportSection[];
   recentLeads: Array<{ companyName: string; contactName: string; status: string; repEmail: string; repName?: string | null; updatedAt: string; notes?: string | null }>;
   upcomingLeads: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string; repName?: string | null; notes?: string | null }>;
@@ -348,26 +349,69 @@ export async function sendSummaryEmail(opts: {
   const { companyName, accentBg, accentText } = getEmailBranding(settings);
 
   const subject = `${companyName} — ${opts.periodLabel} Activity Summary`;
+  const isAdmin = opts.isAdmin ?? false;
 
-  function mkRow(cells: string[]) {
-    return `<tr style="border-bottom:1px solid #e5e7eb">${cells.map((c) => `<td style="padding:9px 12px;font-size:13px">${c ?? "—"}</td>`).join("")}</tr>`;
-  }
-
-  function firstName(repName: string | null | undefined, repEmail: string): string {
-    if (repName && repName.trim()) return repName.trim().split(/\s+/)[0];
+  function repLabel(repName: string | null | undefined, repEmail: string): string {
+    if (repName && repName.trim()) return repName.trim();
     return repEmail.split("@")[0];
   }
 
-  function sectionHeader(title: string, color = "#374151") {
-    return `<h3 style="font-size:14px;font-weight:700;color:${color};margin:24px 0 8px;padding-bottom:6px;border-bottom:1px solid #e5e7eb">${title}</h3>`;
+  function truncateNotes(notes: string | null | undefined, max = 120): string {
+    if (!notes) return "—";
+    return notes.length > max ? notes.slice(0, max) + "…" : notes;
   }
 
-  function tableWrap(headCells: string[], rows: string, bgColor = "#f9fafb") {
-    const ths = headCells.map((h) => `<th style="padding:9px 12px;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px">${h}</th>`).join("");
-    return `<table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden">
-      <thead><tr style="background:${bgColor};text-align:left">${ths}</tr></thead>
+  function sectionHeader(title: string, color = "#374151", icon = "") {
+    return `<h3 style="font-size:15px;font-weight:700;color:${color};margin:28px 0 0;padding:12px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px 6px 0 0;letter-spacing:-0.2px">${icon ? icon + " " : ""}${title}</h3>`;
+  }
+
+  function repSubHeader(name: string) {
+    return `<div style="padding:7px 16px;background:#f3f4f6;border-left:3px solid ${accentBg};font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.6px">${name}</div>`;
+  }
+
+  function tableWrap(headCells: string[], rows: string, bgColor = "#ffffff") {
+    const ths = headCells.map((h) => `<th style="padding:8px 12px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.5px;text-align:left">${h}</th>`).join("");
+    return `<table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-top:0;margin-bottom:4px">
+      <thead><tr style="background:${bgColor}">${ths}</tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+  }
+
+  function mkRow(cells: string[], highlight = false) {
+    const bg = highlight ? "background:#fffbeb;" : "";
+    return `<tr style="${bg}border-bottom:1px solid #f3f4f6">${cells.map((c) => `<td style="padding:8px 12px;font-size:13px;color:#1f2937;vertical-align:top">${c ?? "—"}</td>`).join("")}</tr>`;
+  }
+
+  // Group an array of leads by rep, returning entries sorted by rep name
+  function groupByRep<T extends { repEmail: string; repName?: string | null }>(items: T[]): Array<{ repLabel: string; items: T[] }> {
+    const map = new Map<string, { repLabel: string; items: T[] }>();
+    for (const item of items) {
+      const key = item.repEmail;
+      if (!map.has(key)) map.set(key, { repLabel: repLabel(item.repName, item.repEmail), items: [] });
+      map.get(key)!.items.push(item);
+    }
+    return Array.from(map.values()).sort((a, b) => a.repLabel.localeCompare(b.repLabel));
+  }
+
+  // Build a grouped-by-rep table block for admin emails
+  function groupedTableBlock(
+    items: Array<{ repEmail: string; repName?: string | null; [key: string]: any }>,
+    headCells: string[],
+    rowBuilder: (item: any) => string[],
+    emptyMsg: string
+  ): string {
+    if (!items.length) return `<div style="border:1px solid #e5e7eb;border-top:0;padding:12px 16px;color:#9ca3af;font-size:13px;margin-bottom:4px">${emptyMsg}</div>`;
+    if (!isAdmin) {
+      // No grouping for reps — just a plain table without a Rep column
+      const rows = items.map((l) => mkRow(rowBuilder(l))).join("");
+      return tableWrap(headCells, rows);
+    }
+    // Admin: group by rep with a sub-header per rep
+    const groups = groupByRep(items);
+    return groups.map((g) => {
+      const rows = g.items.map((l) => mkRow(rowBuilder(l))).join("");
+      return repSubHeader(g.repLabel) + tableWrap(headCells, rows);
+    }).join("");
   }
 
   const isEnabled = (id: string) => {
@@ -381,16 +425,19 @@ export async function sendSummaryEmail(opts: {
   const htmlParts: string[] = [];
   const textParts: string[] = [];
 
-  // Pipeline Summary
-  if (isEnabled("pipeline_summary") && opts.pipelineCounts?.length) {
-    htmlParts.push(sectionHeader("Pipeline Overview", "#1e40af"));
+  // Pipeline Summary (admin-only — always shows all reps)
+  if (isEnabled("pipeline_summary") && isAdmin && opts.pipelineCounts?.length) {
+    htmlParts.push(sectionHeader("Pipeline Overview", "#1e40af", "📊"));
     const rows = opts.pipelineCounts.map((p) =>
-      `<tr style="border-bottom:1px solid #e5e7eb">
-        <td style="padding:9px 12px;font-size:13px">${p.status}</td>
-        <td style="padding:9px 12px;font-size:13px;font-weight:700;text-align:right">${p.count}</td>
+      `<tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:8px 12px;font-size:13px">${p.status}</td>
+        <td style="padding:8px 12px;font-size:13px;font-weight:700;text-align:right;color:#1e40af">${p.count}</td>
       </tr>`
     ).join("");
-    htmlParts.push(tableWrap(["Status", "Leads"], rows, "#eff6ff"));
+    htmlParts.push(`<table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-top:0;margin-bottom:4px">
+      <thead><tr style="background:#eff6ff"><th style="padding:8px 12px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.5px;text-align:left">Status</th><th style="padding:8px 12px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.5px;text-align:right">Leads</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`);
     textParts.push(`Pipeline Overview:\n${opts.pipelineCounts.map((p) => `• ${p.status}: ${p.count}`).join("\n")}`);
   }
 
@@ -398,83 +445,100 @@ export async function sendSummaryEmail(opts: {
   if (isEnabled("recent_activity")) {
     const sec = getSection("recent_activity");
     const daysBack = sec?.daysBack ?? 7;
-    htmlParts.push(sectionHeader(`Recent Activity (last ${daysBack} days)`));
-    if (opts.recentLeads.length) {
-      const rows = opts.recentLeads.map((l) => mkRow([l.companyName, l.contactName, l.status, firstName(l.repName, l.repEmail), l.notes || "—"])).join("");
-      htmlParts.push(tableWrap(["Company", "Contact", "Status", "Rep", "Notes"], rows));
-    } else {
-      htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No recent activity this period.</p>`);
-    }
-    textParts.push(`Recent Activity:\n${opts.recentLeads.map((l) => `• ${l.companyName} — ${l.status} (${firstName(l.repName, l.repEmail)})${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
+    htmlParts.push(sectionHeader(`Recent Activity — Last ${daysBack} Days`, "#374151", "🕐"));
+    const headCells = ["Company", "Contact", "Status", "Notes"];
+    htmlParts.push(groupedTableBlock(
+      opts.recentLeads,
+      headCells,
+      (l) => [l.companyName, l.contactName, `<span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${l.status}</span>`, truncateNotes(l.notes)],
+      "No recent activity this period."
+    ));
+    const repLine = (l: any) => isAdmin ? ` (${repLabel(l.repName, l.repEmail)})` : "";
+    textParts.push(`Recent Activity (last ${daysBack} days):\n${opts.recentLeads.map((l) => `• ${l.companyName}${repLine(l)} — ${l.status}${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
   }
 
   // Upcoming Follow-ups
   if (isEnabled("upcoming_followups")) {
     const sec = getSection("upcoming_followups");
     const daysAhead = sec?.daysAhead ?? 7;
-    htmlParts.push(sectionHeader(`Upcoming Follow-ups (next ${daysAhead} days)`, "#065f46"));
-    if (opts.upcomingLeads.length) {
-      const rows = opts.upcomingLeads.map((l) => mkRow([l.companyName, l.contactName, l.followUpDate, l.status, firstName(l.repName, l.repEmail), l.notes || "—"])).join("");
-      htmlParts.push(tableWrap(["Company", "Contact", "Date", "Status", "Rep", "Notes"], rows, "#ecfdf5"));
-    } else {
-      htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No follow-ups scheduled in the next ${daysAhead} days.</p>`);
-    }
-    textParts.push(`Upcoming Follow-ups:\n${opts.upcomingLeads.map((l) => `• ${l.companyName} — ${l.followUpDate} (${firstName(l.repName, l.repEmail)})${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
+    htmlParts.push(sectionHeader(`Upcoming Follow-ups — Next ${daysAhead} Days`, "#065f46", "📅"));
+    const headCells = ["Company", "Contact", "Follow-up Date", "Status", "Notes"];
+    htmlParts.push(groupedTableBlock(
+      opts.upcomingLeads,
+      headCells,
+      (l) => [l.companyName, l.contactName, `<strong>${l.followUpDate}</strong>`, `<span style="background:#ecfdf5;color:#065f46;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${l.status}</span>`, truncateNotes(l.notes)],
+      `No follow-ups scheduled in the next ${daysAhead} days.`
+    ));
+    const repLine = (l: any) => isAdmin ? ` (${repLabel(l.repName, l.repEmail)})` : "";
+    textParts.push(`Upcoming Follow-ups (next ${daysAhead} days):\n${opts.upcomingLeads.map((l) => `• ${l.companyName}${repLine(l)} — ${l.followUpDate} [${l.status}]${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
   }
 
   // Overdue Leads
   if (isEnabled("overdue_leads")) {
-    htmlParts.push(sectionHeader("Overdue Follow-ups — Action Required", "#991b1b"));
     const items = opts.overdueLeads ?? [];
-    if (items.length) {
-      const rows = items.map((l) => mkRow([l.companyName, l.contactName, l.followUpDate, l.status, firstName(l.repName, l.repEmail), l.notes || "—"])).join("");
-      htmlParts.push(tableWrap(["Company", "Contact", "Due Date", "Status", "Rep", "Notes"], rows, "#fef2f2"));
-    } else {
-      htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No overdue follow-ups.</p>`);
-    }
-    textParts.push(`Overdue Follow-ups:\n${items.map((l) => `• ${l.companyName} — ${l.followUpDate} (${firstName(l.repName, l.repEmail)})${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
+    htmlParts.push(sectionHeader("Overdue Follow-ups — Action Required", "#991b1b", "⚠️"));
+    const headCells = ["Company", "Contact", "Was Due", "Status", "Notes"];
+    htmlParts.push(groupedTableBlock(
+      items,
+      headCells,
+      (l) => [l.companyName, l.contactName, `<span style="color:#dc2626;font-weight:600">${l.followUpDate}</span>`, `<span style="background:#fef2f2;color:#991b1b;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${l.status}</span>`, truncateNotes(l.notes)],
+      "No overdue follow-ups."
+    ));
+    const repLine = (l: any) => isAdmin ? ` (${repLabel(l.repName, l.repEmail)})` : "";
+    textParts.push(`Overdue Follow-ups:\n${items.map((l) => `• ${l.companyName}${repLine(l)} — was due ${l.followUpDate} [${l.status}]${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
   }
 
   // Won Leads
   if (isEnabled("won_leads")) {
-    htmlParts.push(sectionHeader("Won / Closed Deals", "#065f46"));
     const items = opts.wonLeads ?? [];
-    if (items.length) {
-      const rows = items.map((l) => mkRow([l.companyName, l.contactName, firstName(l.repName, l.repEmail), l.updatedAt, l.notes || "—"])).join("");
-      htmlParts.push(tableWrap(["Company", "Contact", "Rep", "Closed", "Notes"], rows, "#ecfdf5"));
-    } else {
-      htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No won deals this period.</p>`);
-    }
-    textParts.push(`Won Deals:\n${items.map((l) => `• ${l.companyName} (${firstName(l.repName, l.repEmail)})${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
+    htmlParts.push(sectionHeader("Won / Closed Deals", "#065f46", "🏆"));
+    const headCells = ["Company", "Contact", "Closed Date", "Notes"];
+    htmlParts.push(groupedTableBlock(
+      items,
+      headCells,
+      (l) => [l.companyName, l.contactName, l.updatedAt, truncateNotes(l.notes)],
+      "No won deals this period."
+    ));
+    const repLine = (l: any) => isAdmin ? ` (${repLabel(l.repName, l.repEmail)})` : "";
+    textParts.push(`Won Deals:\n${items.map((l) => `• ${l.companyName}${repLine(l)}${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
   }
 
-  // Top Performers
-  if (isEnabled("top_performers")) {
-    htmlParts.push(sectionHeader("Top Performers", "#5b21b6"));
+  // Top Performers (admin-only)
+  if (isEnabled("top_performers") && isAdmin) {
+    htmlParts.push(sectionHeader("Top Performers", "#5b21b6", "⭐"));
     const items = opts.topPerformers ?? [];
     if (items.length) {
       const rows = items.map((p, i) =>
-        `<tr style="border-bottom:1px solid #e5e7eb">
-          <td style="padding:9px 12px;font-size:13px;color:#7c3aed;font-weight:700">#${i + 1}</td>
-          <td style="padding:9px 12px;font-size:13px">${p.repName}</td>
-          <td style="padding:9px 12px;font-size:13px;color:#6b7280">${p.repEmail}</td>
-          <td style="padding:9px 12px;font-size:13px;font-weight:700;text-align:right">${p.count}</td>
+        `<tr style="border-bottom:1px solid #f3f4f6">
+          <td style="padding:8px 12px;font-size:13px;color:#7c3aed;font-weight:700;width:40px">#${i + 1}</td>
+          <td style="padding:8px 12px;font-size:13px;font-weight:600">${p.repName}</td>
+          <td style="padding:8px 12px;font-size:13px;color:#6b7280">${p.repEmail}</td>
+          <td style="padding:8px 12px;font-size:13px;font-weight:700;text-align:right;color:#5b21b6">${p.count}</td>
         </tr>`
       ).join("");
-      htmlParts.push(tableWrap(["Rank", "Name", "Email", "Leads"], rows, "#f5f3ff"));
+      htmlParts.push(`<table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-top:0;margin-bottom:4px">
+        <thead><tr style="background:#f5f3ff"><th style="padding:8px 12px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.5px;text-align:left">Rank</th><th style="padding:8px 12px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.5px;text-align:left">Name</th><th style="padding:8px 12px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.5px;text-align:left">Email</th><th style="padding:8px 12px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.5px;text-align:right">Leads</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`);
     } else {
-      htmlParts.push(`<p style="color:#9ca3af;font-size:13px">No activity data available.</p>`);
+      htmlParts.push(`<div style="border:1px solid #e5e7eb;border-top:0;padding:12px 16px;color:#9ca3af;font-size:13px;margin-bottom:4px">No activity data available.</div>`);
     }
     textParts.push(`Top Performers:\n${items.map((p, i) => `#${i + 1} ${p.repName} — ${p.count} leads`).join("\n") || "None"}`);
   }
 
+  const greeting = isAdmin
+    ? `Here's the full team activity report, organized by sales rep.`
+    : `Here's your personal sales activity summary.`;
+
   const html = `
     <div style="font-family:sans-serif;max-width:640px;margin:0 auto;color:#1f2937">
       ${emailHeader(companyName, accentBg, accentText, `${opts.periodLabel} Activity Summary`)}
-      <div style="background:#fff;border:1px solid #e5e7eb;padding:24px">
-        <p style="margin:0 0 4px">Hi <strong>${opts.recipientName}</strong>,</p>
-        <p style="margin:0 0 20px;color:#6b7280;font-size:13px">Here's your sales activity overview.</p>
-        ${htmlParts.join("\n") || `<p style="color:#9ca3af;font-size:13px">No sections configured for this report.</p>`}
+      <div style="background:#fff;border:1px solid #e5e7eb;border-top:0;padding:24px 24px 8px">
+        <p style="margin:0 0 4px;font-size:15px">Hi <strong>${opts.recipientName}</strong>,</p>
+        <p style="margin:0 0 4px;color:#6b7280;font-size:13px">${greeting}</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e5e7eb;border-top:0;padding:0 24px 24px">
+        ${htmlParts.join("\n") || `<p style="color:#9ca3af;font-size:13px;padding-top:16px">No sections configured for this report.</p>`}
       </div>
       ${emailFooter(companyName)}
     </div>`;
