@@ -118,16 +118,6 @@ export default function LeadNewPage() {
           <h1 className="text-xl font-bold" data-testid="new-lead-title">New Lead</h1>
         </div>
 
-        {/* Notes warning banner */}
-        {showNotesWarning && (
-          <div className="mb-4 flex items-start gap-3 px-4 py-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 text-sm">
-            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span>
-              Notes are below the recommended minimum of <strong>{minChars} characters</strong>. More detail helps the team — but your lead has been saved.
-            </span>
-          </div>
-        )}
-
         <div className="bg-card border border-card-border rounded-xl p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
 
@@ -257,6 +247,16 @@ export default function LeadNewPage() {
                 </div>
               )}
             </div>
+
+            {/* Notes warning banner */}
+            {showNotesWarning && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 text-sm">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>
+                  Notes are below the recommended minimum of <strong>{minChars} characters</strong>. More detail helps the team — but you can still save.
+                </span>
+              </div>
+            )}
 
             <button
               type="submit"
