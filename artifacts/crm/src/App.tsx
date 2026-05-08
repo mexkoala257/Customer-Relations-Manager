@@ -138,7 +138,7 @@ function AppRouter() {
         </Route>
 
         <Route path="/new">
-          <ProtectedRoute component={QuickEntryPage} />
+          <FlaggedRoute flag="quick_entry" component={QuickEntryPage} />
         </Route>
 
         <Route path="/leads/new">
@@ -230,15 +230,15 @@ function AppRouter() {
         </Route>
 
         <Route path="/reminders">
-          <ProtectedRoute component={MyRemindersPage} />
+          <FlaggedRoute flag="reminders" component={MyRemindersPage} />
         </Route>
 
         <Route path="/team">
-          <ProtectedRoute component={TeamPage} />
+          <FlaggedRoute flag="team_portal" component={TeamPage} />
         </Route>
 
         <Route path="/guide">
-          <ProtectedRoute component={GuidePage} />
+          <FlaggedRoute flag="user_guide" component={GuidePage} />
         </Route>
 
         <Route component={NotFound} />

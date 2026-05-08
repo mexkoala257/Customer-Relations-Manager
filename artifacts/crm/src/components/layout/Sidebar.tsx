@@ -44,10 +44,10 @@ const navItems: NavItem[] = [
   { label: "Customers", icon: Building2, href: "/customers" },
   { label: "Price Lookup", icon: Package, href: "/parts", flag: "price_lookup" },
   { label: "Following", icon: BellRing, href: "/following", flag: "following" },
-  { label: "Messages", icon: MessageSquare, href: "/team" },
-  { label: "Reminders", icon: Bell, href: "/reminders" },
+  { label: "Messages", icon: MessageSquare, href: "/team", flag: "team_portal" },
+  { label: "Reminders", icon: Bell, href: "/reminders", flag: "reminders" },
   { label: "Settings", icon: Settings, href: "/settings" },
-  { label: "User Guide", icon: BookOpen, href: "/guide" },
+  { label: "User Guide", icon: BookOpen, href: "/guide", flag: "user_guide" },
 ];
 
 const adminItems: NavItem[] = [
@@ -62,12 +62,12 @@ const adminItems: NavItem[] = [
   { label: "Email Log", icon: Mail, href: "/admin/email-logs" },
 ];
 
-function useDmUnreadCount() {
+function useDmUnreadCount(enabled: boolean) {
   const [count, setCount] = useState(0);
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !enabled) { setCount(0); return; }
     function fetch_count() {
       const token = getToken();
       if (!token) return;
@@ -79,7 +79,7 @@ function useDmUnreadCount() {
     fetch_count();
     const id = setInterval(fetch_count, 60000);
     return () => clearInterval(id);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, enabled]);
 
   return count;
 }
@@ -90,8 +90,9 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { settings } = useAppSettings();
   const { isEnabled } = useFeatureFlags();
   const [showBugReport, setShowBugReport] = useState(false);
-  const dmUnread = useDmUnreadCount();
   const isSuperAdmin = userRole === "superadmin";
+  const dmEnabled = isSuperAdmin || isEnabled("direct_messages");
+  const dmUnread = useDmUnreadCount(dmEnabled);
 
   function isActive(href: string) {
     if (href === "/") return location === "/";
@@ -128,24 +129,26 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {/* Quick Entry CTA */}
-        <Link
-          href="/new"
-          onClick={onClose}
-          className={cn(
-            "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all mb-3",
-            isActive("/new")
-              ? "bg-accent text-accent-foreground"
-              : "bg-accent/20 text-accent hover:bg-accent hover:text-accent-foreground border border-accent/30"
-          )}
-          data-testid="nav-quick-entry"
-        >
-          <Zap className="w-4 h-4 flex-shrink-0" />
-          <span>Quick Entry</span>
-        </Link>
+        {(isSuperAdmin || isEnabled("quick_entry")) && (
+          <Link
+            href="/new"
+            onClick={onClose}
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all mb-3",
+              isActive("/new")
+                ? "bg-accent text-accent-foreground"
+                : "bg-accent/20 text-accent hover:bg-accent hover:text-accent-foreground border border-accent/30"
+            )}
+            data-testid="nav-quick-entry"
+          >
+            <Zap className="w-4 h-4 flex-shrink-0" />
+            <span>Quick Entry</span>
+          </Link>
+        )}
 
         {navItems.filter(isItemVisible).map((item) => {
           const active = isActive(item.href);
-          const showDot = item.href === "/team" && dmUnread > 0;
+          const showDot = item.href === "/team" && dmEnabled && dmUnread > 0;
           return (
             <Link
               key={item.href}

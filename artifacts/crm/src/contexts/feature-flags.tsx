@@ -39,6 +39,36 @@ export const FLAG_DEFINITIONS: FlagDef[] = [
     description: "Shows the Following page where users track watched leads and customers.",
     affectsRoles: "all",
   },
+  {
+    key: "team_portal",
+    label: "Team Portal & Messages",
+    description: "Shows the Messages tab in the sidebar, giving users access to team messages, updates, photos, and documents.",
+    affectsRoles: "all",
+  },
+  {
+    key: "direct_messages",
+    label: "Direct Messages",
+    description: "Enables the Direct Messages feature within the Team Portal including the inbox, sent box, and unread badge.",
+    affectsRoles: "all",
+  },
+  {
+    key: "quick_entry",
+    label: "Quick Entry",
+    description: "Shows the Quick Entry shortcut button at the top of the sidebar for fast lead creation.",
+    affectsRoles: "all",
+  },
+  {
+    key: "reminders",
+    label: "Personal Reminders",
+    description: "Shows the Reminders page in the sidebar where users manage their own reminder schedule.",
+    affectsRoles: "all",
+  },
+  {
+    key: "user_guide",
+    label: "User Guide",
+    description: "Shows the User Guide link in the sidebar.",
+    affectsRoles: "all",
+  },
 ];
 
 export type FeatureFlags = Record<string, boolean>;
