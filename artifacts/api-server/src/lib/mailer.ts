@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { logger } from "./logger";
 import { db, appSettingsTable, emailLogsTable } from "@workspace/db";
 import type { ReportSection } from "@workspace/db";
+import { formatPipelineSummary, type PipelineSummary } from "./pipeline-summary";
 
 const ACCENT_HEX: Record<string, { bg: string; text: string }> = {
   amber:  { bg: "#f59e0b", text: "#1c1917" },
@@ -342,7 +343,7 @@ export async function sendSummaryEmail(opts: {
   upcomingLeads: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string; repName?: string | null; notes?: string | null }>;
   overdueLeads?: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string; repName?: string | null; notes?: string | null }>;
   wonLeads?: Array<{ companyName: string; contactName: string; status: string; repEmail: string; repName?: string | null; updatedAt: string; notes?: string | null }>;
-  pipelineCounts?: Array<{ status: string; count: number }>;
+  pipelineSummary?: PipelineSummary;
   topPerformers?: Array<{ repEmail: string; repName: string; count: number }>;
 }): Promise<{ sent: boolean; message: string }> {
   const settings = await getAllSettings();
@@ -426,19 +427,10 @@ export async function sendSummaryEmail(opts: {
   const textParts: string[] = [];
 
   // Pipeline Summary (admin-only — always shows all reps)
-  if (isEnabled("pipeline_summary") && isAdmin && opts.pipelineCounts?.length) {
-    htmlParts.push(sectionHeader("Pipeline Overview", "#1e40af", "📊"));
-    const rows = opts.pipelineCounts.map((p) =>
-      `<tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:8px 12px;font-size:13px">${p.status}</td>
-        <td style="padding:8px 12px;font-size:13px;font-weight:700;text-align:right;color:#1e40af">${p.count}</td>
-      </tr>`
-    ).join("");
-    htmlParts.push(`<table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-top:0;margin-bottom:4px">
-      <thead><tr style="background:#eff6ff"><th style="padding:8px 12px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.5px;text-align:left">Status</th><th style="padding:8px 12px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.5px;text-align:right">Leads</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`);
-    textParts.push(`Pipeline Overview:\n${opts.pipelineCounts.map((p) => `• ${p.status}: ${p.count}`).join("\n")}`);
+  if (isEnabled("pipeline_summary") && isAdmin && opts.pipelineSummary) {
+    const line = formatPipelineSummary(opts.pipelineSummary);
+    htmlParts.push(`<p style="margin:20px 0 4px;padding:12px 16px;background:#eff6ff;border:1px solid #dbeafe;border-radius:6px;font-size:14px;font-weight:600;color:#1e40af">${line}</p>`);
+    textParts.push(line);
   }
 
   // Recent Activity

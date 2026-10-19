@@ -4,6 +4,7 @@ import type { ReportSection } from "@workspace/db";
 import { eq, and, gte, lte, lt, sql } from "drizzle-orm";
 import { sendFollowUpReminderEmail, sendSummaryEmail, sendPastDueReminderEmail } from "./mailer";
 import { logger } from "./logger";
+import { getPipelineSummary } from "./pipeline-summary";
 
 async function getSettings() {
   const rows = await db.select().from(reminderSettingsTable).where(eq(reminderSettingsTable.id, 1)).limit(1);
@@ -187,7 +188,10 @@ export async function runPastDueReminders(): Promise<{ emailsSent: number; logs:
   return { emailsSent, logs };
 }
 
-export async function buildSummaryReportData(sections: ReportSection[]) {
+export async function buildSummaryReportData(
+  sections: ReportSection[],
+  { recordPipelineSnapshot = false } = {},
+) {
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
 
@@ -262,6 +266,13 @@ export async function buildSummaryReportData(sections: ReportSection[]) {
   const data: Record<string, any[]> = {};
   keys.forEach((k, i) => { data[k] = results[i]; });
 
+  const pipelineSummary = isEnabled("pipeline_summary")
+    ? await getPipelineSummary(
+        (data.pipelineCounts as { count: number }[]).reduce((total, row) => total + row.count, 0),
+        { recordSnapshot: recordPipelineSnapshot, now: today },
+      )
+    : undefined;
+
   // Top performers
   let topPerformers: { repEmail: string; repName: string; count: number }[] = [];
   if (isEnabled("top_performers") && data.allUsers.length) {
@@ -283,7 +294,7 @@ export async function buildSummaryReportData(sections: ReportSection[]) {
     upcomingLeads: (data.upcomingLeads as any[]).filter((l) => l.followUpDate !== null) as any[],
     overdueLeads: (data.overdueLeads as any[]).filter((l) => l.followUpDate !== null) as any[],
     wonLeads: (data.wonLeads as any[]).map((l) => ({ ...l, updatedAt: l.updatedAt instanceof Date ? l.updatedAt.toISOString().slice(0, 10) : String(l.updatedAt).slice(0, 10) })),
-    pipelineCounts: data.pipelineCounts as { status: string; count: number }[],
+    pipelineSummary,
     topPerformers,
   };
 }
@@ -307,7 +318,7 @@ export async function runSummaryEmails(): Promise<{ emailsSent: number; logs: st
 
   const sections: ReportSection[] = (settings.reportSections as ReportSection[] | null) ?? DEFAULT_REPORT_SECTIONS;
 
-  const data = await buildSummaryReportData(sections);
+  const data = await buildSummaryReportData(sections, { recordPipelineSnapshot: true });
 
   logs.push(`Sending ${periodLabel} summary to ${data.allUsers.length} user(s) — ${data.recentLeads.length} recent, ${data.upcomingLeads.length} upcoming`);
 
@@ -341,7 +352,7 @@ export async function runSummaryEmails(): Promise<{ emailsSent: number; logs: st
       upcomingLeads,
       overdueLeads,
       wonLeads,
-      pipelineCounts: data.pipelineCounts,
+      pipelineSummary: data.pipelineSummary,
       topPerformers: data.topPerformers,
     });
     logs.push(`${result.sent ? "✓ Sent" : "○ Logged"} ${periodLabel} summary to ${user.email}`);
