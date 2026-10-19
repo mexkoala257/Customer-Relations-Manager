@@ -67,6 +67,7 @@ router.post("/admin/reminders/preview-report", requireAdmin, async (req, res) =>
     overdueLeads: data.overdueLeads,
     wonLeads: data.wonLeads,
     pipelineSummary: data.pipelineSummary,
+    weeklyLeadCounts: data.weeklyLeadCounts,
     topPerformers: data.topPerformers,
   });
   return res.json(result);

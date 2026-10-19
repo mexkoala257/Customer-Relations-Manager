@@ -262,6 +262,28 @@ export async function buildSummaryReportData(
   );
   keys.push("pipelineCounts");
 
+  // Count entries, not active pipeline leads: archived entries still count.
+  // Keep this window fixed at 7 days, independent of Recent Activity settings.
+  const weeklySince = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+  queries.push(
+    isEnabled("pipeline_summary")
+      ? db.select({
+          repName: usersTable.fullName,
+          repEmail: usersTable.email,
+          count: sql<number>`count(${leadsTable.id})::int`,
+        })
+          .from(usersTable)
+          .leftJoin(leadsTable, and(
+            eq(leadsTable.userId, usersTable.id),
+            gte(leadsTable.createdAt, weeklySince),
+            lte(leadsTable.createdAt, today),
+          ))
+          .where(eq(usersTable.role, "sales"))
+          .groupBy(usersTable.id, usersTable.fullName, usersTable.email)
+      : Promise.resolve([])
+  );
+  keys.push("weeklyLeadCounts");
+
   const results = await Promise.all(queries);
   const data: Record<string, any[]> = {};
   keys.forEach((k, i) => { data[k] = results[i]; });
@@ -295,6 +317,8 @@ export async function buildSummaryReportData(
     overdueLeads: (data.overdueLeads as any[]).filter((l) => l.followUpDate !== null) as any[],
     wonLeads: (data.wonLeads as any[]).map((l) => ({ ...l, updatedAt: l.updatedAt instanceof Date ? l.updatedAt.toISOString().slice(0, 10) : String(l.updatedAt).slice(0, 10) })),
     pipelineSummary,
+    weeklyLeadCounts: (data.weeklyLeadCounts as { repName: string | null; repEmail: string; count: number }[])
+      .sort((a, b) => b.count - a.count || (a.repName || a.repEmail).localeCompare(b.repName || b.repEmail)),
     topPerformers,
   };
 }
@@ -353,6 +377,7 @@ export async function runSummaryEmails(): Promise<{ emailsSent: number; logs: st
       overdueLeads,
       wonLeads,
       pipelineSummary: data.pipelineSummary,
+      weeklyLeadCounts: data.weeklyLeadCounts,
       topPerformers: data.topPerformers,
     });
     logs.push(`${result.sent ? "✓ Sent" : "○ Logged"} ${periodLabel} summary to ${user.email}`);

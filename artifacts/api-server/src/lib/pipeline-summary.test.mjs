@@ -134,3 +134,43 @@ test("HTML and plain-text summary emails use the compact line and preserve admin
   await sendSummaryEmail({ ...opts, pipelineSummary: { currentTotal: 0, previousTotal: 1 } });
   assert.ok(messages.at(-1).html.includes("Pipeline: 0 leads — down 1"));
 });
+
+test("weekly entry counts appear directly after pipeline totals, including zero entries", async () => {
+  const opts = {
+    toEmail: "test@example.invalid",
+    recipientName: "Test",
+    periodLabel: "Friday Morning",
+    isAdmin: true,
+    sections: [
+      { id: "pipeline_summary", enabled: true },
+      { id: "recent_activity", enabled: true, daysBack: 30 },
+    ],
+    recentLeads: [],
+    upcomingLeads: [],
+    pipelineSummary: { currentTotal: 42, previousTotal: 37 },
+    weeklyLeadCounts: [
+      { repName: "Example Rep A", repEmail: "rep-a@example.invalid", count: 8 },
+      { repName: "Example <Rep> & B", repEmail: "rep-b@example.invalid", count: 0 },
+      { repName: null, repEmail: "rep-c@example.invalid", count: 1 },
+    ],
+  };
+  await sendSummaryEmail(opts);
+  const email = messages.at(-1);
+  const title = "New Leads Entered — Last 7 Days";
+  assert.ok(email.html.indexOf("Pipeline:") < email.html.indexOf(title));
+  assert.ok(email.html.indexOf(title) < email.html.indexOf("Recent Activity"));
+  assert.ok(email.html.includes("Example &lt;Rep&gt; &amp; B"));
+  assert.ok(!email.html.includes("Example <Rep> & B"));
+  assert.ok(email.text.includes("Example Rep A: 8 leads"));
+  assert.ok(email.text.includes("Example <Rep> & B: 0 leads"));
+  assert.ok(email.text.includes("rep-c: 1 lead"));
+  assert.ok(email.text.includes("Recent Activity (last 30 days)"));
+
+  await sendSummaryEmail({ ...opts, isAdmin: false });
+  assert.ok(!messages.at(-1).html.includes(title));
+  assert.ok(!messages.at(-1).text.includes("Example Rep A"));
+  await sendSummaryEmail({ ...opts, sections: [] });
+  assert.ok(!messages.at(-1).html.includes(title));
+  await sendSummaryEmail({ ...opts, weeklyLeadCounts: [] });
+  assert.ok(messages.at(-1).html.includes("No salespeople configured."));
+});

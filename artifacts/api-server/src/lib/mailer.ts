@@ -344,6 +344,7 @@ export async function sendSummaryEmail(opts: {
   overdueLeads?: Array<{ companyName: string; contactName: string; followUpDate: string; status: string; repEmail: string; repName?: string | null; notes?: string | null }>;
   wonLeads?: Array<{ companyName: string; contactName: string; status: string; repEmail: string; repName?: string | null; updatedAt: string; notes?: string | null }>;
   pipelineSummary?: PipelineSummary;
+  weeklyLeadCounts?: Array<{ repName: string | null; repEmail: string; count: number }>;
   topPerformers?: Array<{ repEmail: string; repName: string; count: number }>;
 }): Promise<{ sent: boolean; message: string }> {
   const settings = await getAllSettings();
@@ -431,6 +432,28 @@ export async function sendSummaryEmail(opts: {
     const line = formatPipelineSummary(opts.pipelineSummary);
     htmlParts.push(`<p style="margin:20px 0 4px;padding:12px 16px;background:#eff6ff;border:1px solid #dbeafe;border-radius:6px;font-size:14px;font-weight:600;color:#1e40af">${line}</p>`);
     textParts.push(line);
+    if (opts.weeklyLeadCounts) {
+      const title = "New Leads Entered — Last 7 Days";
+      const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]!);
+      htmlParts.push(`<h3 style="margin:16px 0 8px;font-size:14px;color:#374151">${title}</h3>`);
+      const rows = opts.weeklyLeadCounts.map((rep) => `<tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:7px 12px;font-size:13px">${escapeHtml(repLabel(rep.repName, rep.repEmail))}</td>
+        <td style="padding:7px 12px;font-size:13px;font-weight:700;text-align:right">${rep.count}</td>
+      </tr>`).join("");
+      htmlParts.push(rows
+        ? `<table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb">
+            <thead><tr style="background:#f9fafb">
+              <th style="padding:7px 12px;font-size:11px;text-align:left;color:#6b7280">Salesperson</th>
+              <th style="padding:7px 12px;font-size:11px;text-align:right;color:#6b7280">Leads Entered</th>
+            </tr></thead><tbody>${rows}</tbody>
+          </table>`
+        : `<p style="font-size:13px;color:#6b7280">No salespeople configured.</p>`);
+      textParts.push(`${title}:\n${opts.weeklyLeadCounts.map((rep) =>
+        `• ${repLabel(rep.repName, rep.repEmail)}: ${rep.count} ${rep.count === 1 ? "lead" : "leads"}`
+      ).join("\n") || "No salespeople configured."}`);
+    }
   }
 
   // Recent Activity
