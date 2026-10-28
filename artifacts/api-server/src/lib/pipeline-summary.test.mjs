@@ -143,7 +143,7 @@ test("HTML and plain-text summary emails use the compact line and preserve admin
   assert.ok(messages.at(-1).html.includes("Pipeline: 0 leads — down 1"));
 });
 
-test("weekly entry counts appear directly after pipeline totals, including zero entries", async () => {
+test("company-wide weekly entry counts and goals appear first for every recipient, including zero entries", async () => {
   const opts = {
     toEmail: "test@example.invalid",
     recipientName: "Test",
@@ -157,28 +157,39 @@ test("weekly entry counts appear directly after pipeline totals, including zero 
     upcomingLeads: [],
     pipelineSummary: { currentTotal: 42, previousTotal: 37 },
     weeklyLeadCounts: [
-      { repName: "Example Rep A", repEmail: "rep-a@example.invalid", count: 8 },
-      { repName: "Example <Rep> & B", repEmail: "rep-b@example.invalid", count: 0 },
-      { repName: null, repEmail: "rep-c@example.invalid", count: 1 },
+      { repName: "Example Rep A", repEmail: "rep-a@example.invalid", count: 8, weeklyGoal: 20 },
+      { repName: "Example <Rep> & B", repEmail: "rep-b@example.invalid", count: 0, weeklyGoal: 10 },
+      { repName: null, repEmail: "rep-c@example.invalid", count: 1, weeklyGoal: null },
+      { repName: "Over Goal", repEmail: "over@example.invalid", count: 12, weeklyGoal: 10 },
+      { repName: "Zero Goal", repEmail: "zero@example.invalid", count: 3, weeklyGoal: 0 },
     ],
   };
   await sendSummaryEmail(opts);
   const email = messages.at(-1);
   const title = "New Leads Entered — Last 7 Days";
-  assert.ok(email.html.indexOf("Pipeline:") < email.html.indexOf(title));
+  assert.ok(email.html.indexOf(title) < email.html.indexOf("Pipeline:"));
+  assert.ok(email.text.indexOf(title) < email.text.indexOf("Pipeline:"));
   assert.ok(email.html.indexOf(title) < email.html.indexOf("Recent Activity"));
   assert.ok(email.html.includes("Example &lt;Rep&gt; &amp; B"));
   assert.ok(!email.html.includes("Example <Rep> & B"));
   assert.ok(email.text.includes("Example Rep A: 8 leads"));
   assert.ok(email.text.includes("Example <Rep> & B: 0 leads"));
   assert.ok(email.text.includes("rep-c: 1 lead"));
+  assert.ok(email.text.includes("Example Rep A: 8 leads | Weekly goal: 20 | Progress: 40%"));
+  assert.ok(email.text.includes("Example <Rep> & B: 0 leads | Weekly goal: 10 | Progress: 0%"));
+  assert.ok(email.text.includes("rep-c: 1 lead | Weekly goal: Goal not set | Progress: —"));
+  assert.ok(email.text.includes("Over Goal: 12 leads | Weekly goal: 10 | Progress: 120%"));
+  assert.ok(email.text.includes("Zero Goal: 3 leads | Weekly goal: 0 | Progress: —"));
+  assert.ok(email.html.includes("Weekly Goal") && email.html.includes("40%"));
+  assert.ok(!/NaN|Infinity/.test(email.html + email.text));
   assert.ok(email.text.includes("Recent Activity (last 30 days)"));
 
   await sendSummaryEmail({ ...opts, isAdmin: false });
-  assert.ok(!messages.at(-1).html.includes(title));
-  assert.ok(!messages.at(-1).text.includes("Example Rep A"));
+  assert.ok(messages.at(-1).html.includes(title));
+  assert.ok(messages.at(-1).text.includes("Example Rep A"));
+  assert.ok(!messages.at(-1).html.includes("Pipeline:"));
   await sendSummaryEmail({ ...opts, sections: [] });
-  assert.ok(!messages.at(-1).html.includes(title));
+  assert.ok(messages.at(-1).html.includes(title));
   await sendSummaryEmail({ ...opts, weeklyLeadCounts: [] });
   assert.ok(messages.at(-1).html.includes("No salespeople configured."));
 });
@@ -218,7 +229,10 @@ const fixtureData = {
     status: "Close Win", repEmail: users[1].email, notes: "Won note",
   }],
   pipelineSummary: { currentTotal: 42, previousTotal: 37 },
-  weeklyLeadCounts: [{ repName: "Recipient A", repEmail: users[0].email, count: 2 }],
+  weeklyLeadCounts: [
+    { repName: "Recipient A", repEmail: users[0].email, count: 2, weeklyGoal: 5 },
+    { repName: "Unselected Rep", repEmail: users[3].email, count: 0, weeklyGoal: 10 },
+  ],
   topPerformers: [],
 };
 
@@ -236,8 +250,10 @@ test("recipient first, custom order, complete rep blocks, notes and no-activity 
   assert.ok(email.text.includes("Upcoming note"));
   assert.ok(email.text.includes("Won note"));
   assert.ok(email.html.includes("No activity in the enabled report sections"));
-  assert.ok(!email.html.includes("Unselected Rep") && !email.text.includes("d Company"));
-  assert.ok(!email.html.includes("Pipeline:") && !email.text.includes("New Leads Entered"));
+  assert.ok(email.html.includes("Unselected Rep") && !email.text.includes("d Company"));
+  assert.ok(!email.html.includes("Pipeline:") && email.text.includes("New Leads Entered"));
+  assert.equal(email.html.split("New Leads Entered — Last 7 Days").length - 1, 1);
+  assert.ok(email.html.indexOf("New Leads Entered") < email.html.indexOf("Recipient A — Your Leads"));
   assert.ok(email.html.includes("&lt;script&gt;unsafe&lt;/script&gt;"));
   assert.ok(!email.html.includes("<script>"));
 });

@@ -268,10 +268,10 @@ export async function buildSummaryReportData(
   // Keep this window fixed at 7 days, independent of Recent Activity settings.
   const weeklySince = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
   queries.push(
-    isEnabled("pipeline_summary")
-      ? db.select({
+    db.select({
           repName: usersTable.fullName,
           repEmail: usersTable.email,
+          weeklyGoal: usersTable.weeklyLeadGoal,
           count: sql<number>`count(${leadsTable.id})::int`,
         })
           .from(usersTable)
@@ -281,8 +281,7 @@ export async function buildSummaryReportData(
             lte(leadsTable.createdAt, today),
           ))
           .where(eq(usersTable.role, "sales"))
-          .groupBy(usersTable.id, usersTable.fullName, usersTable.email)
-      : Promise.resolve([])
+          .groupBy(usersTable.id, usersTable.fullName, usersTable.email, usersTable.weeklyLeadGoal)
   );
   keys.push("weeklyLeadCounts");
 
@@ -319,7 +318,7 @@ export async function buildSummaryReportData(
     overdueLeads: (data.overdueLeads as any[]).filter((l) => l.followUpDate !== null) as any[],
     wonLeads: (data.wonLeads as any[]).map((l) => ({ ...l, updatedAt: l.updatedAt instanceof Date ? l.updatedAt.toISOString().slice(0, 10) : String(l.updatedAt).slice(0, 10) })),
     pipelineSummary,
-    weeklyLeadCounts: (data.weeklyLeadCounts as { repName: string | null; repEmail: string; count: number }[])
+    weeklyLeadCounts: (data.weeklyLeadCounts as { repName: string | null; repEmail: string; count: number; weeklyGoal: number | null }[])
       .sort((a, b) => b.count - a.count || (a.repName || a.repEmail).localeCompare(b.repName || b.repEmail)),
     topPerformers,
   };

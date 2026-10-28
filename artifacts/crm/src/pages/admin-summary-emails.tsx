@@ -228,6 +228,7 @@ export default function AdminSummaryEmailsPage() {
           <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p>Applies only to the Monday and Friday summary emails. Each block uses the report sections currently enabled in the Report Builder, including lead notes. A coworker with nothing to report shows a "no activity" block.</p>
+            <p>Every recipient also sees a company-wide table of each salesperson's lead entries from the last 7 days, compared with their saved weekly goal. Your selections below control detailed lead blocks, not this summary table.</p>
             <p>CRM access, follow-up reminders and past-due alerts are not affected. Recipients without a custom setup keep the default: sales reps see only their own leads, admins see team-wide activity. Admin recipients also get team totals once at the top when that section is enabled.</p>
           </div>
         </div>

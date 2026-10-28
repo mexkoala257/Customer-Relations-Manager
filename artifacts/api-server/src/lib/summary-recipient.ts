@@ -52,7 +52,8 @@ export function buildRecipientSummaryOptions(
     overdueLeads: filterVisible(data.overdueLeads ?? []),
     wonLeads: filterVisible(data.wonLeads ?? []),
     pipelineSummary: isAdmin ? data.pipelineSummary : undefined,
-    weeklyLeadCounts: isAdmin ? data.weeklyLeadCounts : undefined,
+    // Aggregate entry counts/goals are company-wide; detailed lead blocks stay scoped.
+    weeklyLeadCounts: data.weeklyLeadCounts,
     topPerformers: isAdmin ? data.topPerformers : undefined,
   };
 }
