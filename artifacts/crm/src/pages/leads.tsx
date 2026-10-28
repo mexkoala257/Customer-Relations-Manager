@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 
 import { LEAD_STATUSES, STATUS_BADGE } from "@/lib/lead-status";
+import { getDaysPastDue } from "@/lib/lead-dates";
 
 const STATUS_OPTIONS = ["", ...LEAD_STATUSES];
 
@@ -594,9 +595,7 @@ export default function LeadsPage() {
                   <tbody className="divide-y divide-border">
                     {(leads ?? []).map((lead) => {
                       const mapsUrl = buildMapsUrl(lead);
-                      const daysOverdue = lead.followUpDate
-                        ? Math.floor((Date.now() - new Date(lead.followUpDate + "T00:00:00").getTime()) / 86_400_000)
-                        : 0;
+                      const daysOverdue = getDaysPastDue(lead.followUpDate);
                       return (
                         <tr
                           key={lead.id}

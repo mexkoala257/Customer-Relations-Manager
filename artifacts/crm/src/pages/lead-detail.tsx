@@ -5,6 +5,9 @@ import {
   useUpdateLead,
   useListUsers,
   getGetLeadQueryKey,
+  getListLeadsQueryKey,
+  getGetCustomerQueryKey,
+  getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -61,6 +64,11 @@ export default function LeadDetailPage({ id }: { id: string }) {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetLeadQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        if (lead?.customerId) {
+          queryClient.invalidateQueries({ queryKey: getGetCustomerQueryKey(lead.customerId) });
+        }
         toast({
           title: (
             <span className="flex items-center gap-2">

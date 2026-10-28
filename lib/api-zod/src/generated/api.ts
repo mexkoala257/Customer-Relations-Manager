@@ -368,6 +368,12 @@ export const ListLeadsQueryParams = zod.object({
   userId: zod.coerce.string().optional(),
   followUpToday: zod.coerce.string().optional(),
   followUpThisWeek: zod.coerce.string().optional(),
+  pastDue: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      'Set to \"true\" to return only active leads with a follow-up date before today.',
+    ),
 });
 
 export const ListLeadsResponseItem = zod.object({

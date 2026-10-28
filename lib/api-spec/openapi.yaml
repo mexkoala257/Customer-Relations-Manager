@@ -393,6 +393,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: pastDue
+          in: query
+          required: false
+          description: Set to "true" to return only active leads with a follow-up date before today.
+          schema:
+            type: string
       responses:
         "200":
           description: List of leads

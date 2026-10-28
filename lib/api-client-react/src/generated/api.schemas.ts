@@ -343,4 +343,8 @@ export type ListLeadsParams = {
   userId?: string;
   followUpToday?: string;
   followUpThisWeek?: string;
+  /**
+   * Set to "true" to return only active leads with a follow-up date before today.
+   */
+  pastDue?: string;
 };
