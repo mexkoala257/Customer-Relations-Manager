@@ -9,6 +9,9 @@ const result = await build({
     contents: `
       export * from "./pipeline-summary";
       export { sendSummaryEmail } from "./mailer";
+      export { renderSummaryEmail } from "./mailer";
+      export { buildRecipientSummaryOptions } from "./summary-recipient";
+      export { validateCoworkerSelection } from "./summary-customizations";
       export { snapshots, messages } from "@workspace/db";
     `,
     resolveDir: fileURLToPath(new URL(".", import.meta.url)),
@@ -28,6 +31,7 @@ const result = await build({
           export const messages = [];
           export const appSettingsTable = { key: "key", value: "value" };
           export const emailLogsTable = {};
+          export const usersTable = {};
           export const db = {
             select() {
               return { from() {
@@ -52,6 +56,7 @@ const result = await build({
           };
         ` : path === "drizzle-orm" ? `
           export const eq = (_field, value) => value;
+          export const like = (_field, value) => value;
         ` : path === "nodemailer" ? `
           import { messages } from "@workspace/db";
           export default { createTransport: () => ({
@@ -64,7 +69,10 @@ const result = await build({
     },
   }],
 });
-const { getPipelineSummary, formatPipelineSummary, sendSummaryEmail, snapshots, messages } =
+const {
+  getPipelineSummary, formatPipelineSummary, sendSummaryEmail, renderSummaryEmail,
+  buildRecipientSummaryOptions, validateCoworkerSelection, snapshots, messages,
+} =
   await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`);
 
 test("single-line totals handle increases, decreases, no change, zero, and missing history", () => {
@@ -173,4 +181,101 @@ test("weekly entry counts appear directly after pipeline totals, including zero 
   assert.ok(!messages.at(-1).html.includes(title));
   await sendSummaryEmail({ ...opts, weeklyLeadCounts: [] });
   assert.ok(messages.at(-1).html.includes("No salespeople configured."));
+});
+
+const users = [
+  { id: "a", email: "a@example.invalid", name: "Recipient A", role: "sales" },
+  { id: "b", email: "b@example.invalid", name: "Zed Coworker", role: "sales" },
+  { id: "c", email: "c@example.invalid", name: "Alpha Coworker", role: "sales" },
+  { id: "d", email: "d@example.invalid", name: "Unselected Rep", role: "sales" },
+  { id: "admin", email: "admin@example.invalid", name: "Admin", role: "admin" },
+  { id: "entry", email: "entry@example.invalid", name: "Data Entry", role: "data-entry" },
+];
+const personalSections = [
+  { id: "pipeline_summary", enabled: true },
+  { id: "recent_activity", enabled: true, daysBack: 7 },
+  { id: "upcoming_followups", enabled: true, daysAhead: 7 },
+  { id: "overdue_leads", enabled: true },
+  { id: "won_leads", enabled: true },
+];
+const fixtureData = {
+  allUsers: users,
+  recentLeads: [users[0], users[1], users[3]].map((user) => ({
+    companyName: `${user.id} Company`,
+    contactName: "Test Contact",
+    status: "New",
+    repEmail: user.email,
+    updatedAt: "2026-10-19",
+    notes: `Note for ${user.id} <script>unsafe</script>`,
+  })),
+  upcomingLeads: [{
+    companyName: "Upcoming Company", contactName: "Contact", followUpDate: "2026-10-20",
+    status: "Discovery", repEmail: users[1].email, notes: "Upcoming note",
+  }],
+  overdueLeads: [],
+  wonLeads: [{
+    companyName: "Won Company", contactName: "Contact", updatedAt: "2026-10-19",
+    status: "Close Win", repEmail: users[1].email, notes: "Won note",
+  }],
+  pipelineSummary: { currentTotal: 42, previousTotal: 37 },
+  weeklyLeadCounts: [{ repName: "Recipient A", repEmail: users[0].email, count: 2 }],
+  topPerformers: [],
+};
+
+test("recipient first, custom order, complete rep blocks, notes and no-activity messages", async () => {
+  const opts = buildRecipientSummaryOptions(fixtureData, users[0], personalSections, "Monday Morning", ["b", "c"]);
+  assert.deepEqual(opts.salespersonBlocks.map((block) => block.salespersonId), ["a", "b", "c"]);
+  const sentCount = messages.length;
+  const email = await renderSummaryEmail(opts);
+  assert.equal(messages.length, sentCount, "preview must not send an email");
+  const own = email.html.indexOf("Recipient A — Your Leads");
+  const second = email.html.indexOf("Zed Coworker");
+  const third = email.html.indexOf("Alpha Coworker");
+  assert.ok(own >= 0 && own < second && second < third);
+  assert.ok(email.html.indexOf("Won Company") > second && email.html.indexOf("Won Company") < third);
+  assert.ok(email.text.includes("Upcoming note"));
+  assert.ok(email.text.includes("Won note"));
+  assert.ok(email.html.includes("No activity in the enabled report sections"));
+  assert.ok(!email.html.includes("Unselected Rep") && !email.text.includes("d Company"));
+  assert.ok(!email.html.includes("Pipeline:") && !email.text.includes("New Leads Entered"));
+  assert.ok(email.html.includes("&lt;script&gt;unsafe&lt;/script&gt;"));
+  assert.ok(!email.html.includes("<script>"));
+});
+
+test("defaults retain own-only for reps and team-wide admin reports; configured admins get ordered blocks", async () => {
+  const rep = buildRecipientSummaryOptions(fixtureData, users[0], personalSections, "Friday Morning");
+  assert.deepEqual(rep.salespersonBlocks.map((block) => block.salespersonId), ["a"]);
+  assert.deepEqual(rep.recentLeads.map((lead) => lead.repEmail), [users[0].email]);
+  const admin = buildRecipientSummaryOptions(fixtureData, users[4], personalSections, "Friday Morning");
+  assert.equal(admin.salespersonBlocks, undefined);
+  assert.equal(admin.recentLeads.length, fixtureData.recentLeads.length);
+  const configuredAdmin = buildRecipientSummaryOptions(fixtureData, users[4], personalSections, "Friday Morning", ["b", "a"]);
+  const email = await renderSummaryEmail(configuredAdmin);
+  assert.equal(email.html.split("Pipeline:").length - 1, 1);
+  assert.equal(email.html.split("New Leads Entered — Last 7 Days").length - 1, 1);
+  assert.deepEqual(configuredAdmin.salespersonBlocks.map((block) => block.salespersonId), ["admin", "b", "a"]);
+});
+
+test("duplicates, deleted reps, own repeats and non-sales coworkers cannot expand visibility", () => {
+  const opts = buildRecipientSummaryOptions(
+    fixtureData, users[0], personalSections, "Preview", ["b", "a", "missing", "b", "entry", "admin"],
+  );
+  assert.deepEqual(opts.salespersonBlocks.map((block) => block.salespersonId), ["a", "b"]);
+  assert.equal(validateCoworkerSelection("a", ["b", "c"], users), null);
+  assert.equal(validateCoworkerSelection("a", [], users), null);
+  for (const invalid of [["b", "b"], ["a"], ["missing"], ["entry"], ["admin"]]) {
+    assert.ok(validateCoworkerSelection("a", invalid, users));
+  }
+});
+
+test("disabled sections cannot leak activity into blocks or hide an empty salesperson", async () => {
+  const sections = [{ id: "recent_activity", enabled: false }];
+  const email = await renderSummaryEmail(
+    buildRecipientSummaryOptions(fixtureData, users[0], sections, "Preview", ["b"]),
+  );
+  assert.ok(email.html.includes("Recipient A — Your Leads"));
+  assert.ok(email.html.includes("Zed Coworker"));
+  assert.ok(email.html.includes("No activity in the enabled report sections"));
+  assert.ok(!email.html.includes("a Company"));
+  assert.ok(!email.html.includes("Upcoming Company"));
 });

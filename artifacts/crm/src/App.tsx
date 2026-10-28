@@ -28,6 +28,7 @@ import AdminReportsPage from "@/pages/admin-reports";
 import AdminReportBuilderPage from "@/pages/admin-report-builder";
 import AdminBugReportsPage from "@/pages/admin-bug-reports";
 import AdminEmailLogsPage from "@/pages/admin-email-logs";
+import AdminSummaryEmailsPage from "@/pages/admin-summary-emails";
 import SettingsPage from "@/pages/settings";
 import MyRemindersPage from "@/pages/my-reminders";
 import GuidePage from "@/pages/guide";
@@ -183,6 +184,10 @@ function AppRouter() {
 
         <Route path="/admin/email-logs">
           <ProtectedRoute component={AdminEmailLogsPage} adminOnly />
+        </Route>
+
+        <Route path="/admin/summary-emails">
+          <ProtectedRoute component={AdminSummaryEmailsPage} adminOnly />
         </Route>
 
         <Route path="/admin/feature-flags">

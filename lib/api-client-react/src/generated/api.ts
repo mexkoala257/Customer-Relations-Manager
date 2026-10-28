@@ -33,6 +33,11 @@ import type {
   LoginBody,
   StatusCount,
   SuccessResponse,
+  SummaryCustomization,
+  SummaryCustomizationInput,
+  SummaryCustomizationOverview,
+  SummaryEmailPreview,
+  SummaryEmailPreviewInput,
   UpdateCustomerBody,
   UpdateLeadBody,
   UpdateUserBody,
@@ -47,6 +52,351 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary List weekly email recipients and their ordered coworker selections (admin only)
+ */
+export const getGetSummaryCustomizationsUrl = () => {
+  return `/api/admin/summary-customizations`;
+};
+
+export const getSummaryCustomizations = async (
+  options?: RequestInit,
+): Promise<SummaryCustomizationOverview> => {
+  return customFetch<SummaryCustomizationOverview>(
+    getGetSummaryCustomizationsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetSummaryCustomizationsQueryKey = () => {
+  return [`/api/admin/summary-customizations`] as const;
+};
+
+export const getGetSummaryCustomizationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSummaryCustomizations>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSummaryCustomizations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSummaryCustomizationsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSummaryCustomizations>>
+  > = ({ signal }) => getSummaryCustomizations({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSummaryCustomizations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSummaryCustomizationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSummaryCustomizations>>
+>;
+export type GetSummaryCustomizationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List weekly email recipients and their ordered coworker selections (admin only)
+ */
+
+export function useGetSummaryCustomizations<
+  TData = Awaited<ReturnType<typeof getSummaryCustomizations>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSummaryCustomizations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSummaryCustomizationsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save an ordered coworker list; the recipient is always first (admin only)
+ */
+export const getSaveSummaryCustomizationUrl = (userId: string) => {
+  return `/api/admin/summary-customizations/${userId}`;
+};
+
+export const saveSummaryCustomization = async (
+  userId: string,
+  summaryCustomizationInput: SummaryCustomizationInput,
+  options?: RequestInit,
+): Promise<SummaryCustomization> => {
+  return customFetch<SummaryCustomization>(
+    getSaveSummaryCustomizationUrl(userId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(summaryCustomizationInput),
+    },
+  );
+};
+
+export const getSaveSummaryCustomizationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveSummaryCustomization>>,
+    TError,
+    { userId: string; data: BodyType<SummaryCustomizationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveSummaryCustomization>>,
+  TError,
+  { userId: string; data: BodyType<SummaryCustomizationInput> },
+  TContext
+> => {
+  const mutationKey = ["saveSummaryCustomization"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveSummaryCustomization>>,
+    { userId: string; data: BodyType<SummaryCustomizationInput> }
+  > = (props) => {
+    const { userId, data } = props ?? {};
+
+    return saveSummaryCustomization(userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveSummaryCustomizationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveSummaryCustomization>>
+>;
+export type SaveSummaryCustomizationMutationBody =
+  BodyType<SummaryCustomizationInput>;
+export type SaveSummaryCustomizationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save an ordered coworker list; the recipient is always first (admin only)
+ */
+export const useSaveSummaryCustomization = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveSummaryCustomization>>,
+    TError,
+    { userId: string; data: BodyType<SummaryCustomizationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveSummaryCustomization>>,
+  TError,
+  { userId: string; data: BodyType<SummaryCustomizationInput> },
+  TContext
+> => {
+  return useMutation(getSaveSummaryCustomizationMutationOptions(options));
+};
+
+/**
+ * @summary Restore the recipient's default summary (admin only)
+ */
+export const getResetSummaryCustomizationUrl = (userId: string) => {
+  return `/api/admin/summary-customizations/${userId}`;
+};
+
+export const resetSummaryCustomization = async (
+  userId: string,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getResetSummaryCustomizationUrl(userId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getResetSummaryCustomizationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetSummaryCustomization>>,
+    TError,
+    { userId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetSummaryCustomization>>,
+  TError,
+  { userId: string },
+  TContext
+> => {
+  const mutationKey = ["resetSummaryCustomization"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetSummaryCustomization>>,
+    { userId: string }
+  > = (props) => {
+    const { userId } = props ?? {};
+
+    return resetSummaryCustomization(userId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResetSummaryCustomizationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetSummaryCustomization>>
+>;
+
+export type ResetSummaryCustomizationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Restore the recipient's default summary (admin only)
+ */
+export const useResetSummaryCustomization = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetSummaryCustomization>>,
+    TError,
+    { userId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resetSummaryCustomization>>,
+  TError,
+  { userId: string },
+  TContext
+> => {
+  return useMutation(getResetSummaryCustomizationMutationOptions(options));
+};
+
+/**
+ * @summary Render an unsaved recipient configuration without sending email (admin only)
+ */
+export const getPreviewSummaryCustomizationUrl = (userId: string) => {
+  return `/api/admin/summary-customizations/${userId}/preview`;
+};
+
+export const previewSummaryCustomization = async (
+  userId: string,
+  summaryEmailPreviewInput: SummaryEmailPreviewInput,
+  options?: RequestInit,
+): Promise<SummaryEmailPreview> => {
+  return customFetch<SummaryEmailPreview>(
+    getPreviewSummaryCustomizationUrl(userId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(summaryEmailPreviewInput),
+    },
+  );
+};
+
+export const getPreviewSummaryCustomizationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewSummaryCustomization>>,
+    TError,
+    { userId: string; data: BodyType<SummaryEmailPreviewInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewSummaryCustomization>>,
+  TError,
+  { userId: string; data: BodyType<SummaryEmailPreviewInput> },
+  TContext
+> => {
+  const mutationKey = ["previewSummaryCustomization"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewSummaryCustomization>>,
+    { userId: string; data: BodyType<SummaryEmailPreviewInput> }
+  > = (props) => {
+    const { userId, data } = props ?? {};
+
+    return previewSummaryCustomization(userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PreviewSummaryCustomizationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewSummaryCustomization>>
+>;
+export type PreviewSummaryCustomizationMutationBody =
+  BodyType<SummaryEmailPreviewInput>;
+export type PreviewSummaryCustomizationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Render an unsaved recipient configuration without sending email (admin only)
+ */
+export const usePreviewSummaryCustomization = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewSummaryCustomization>>,
+    TError,
+    { userId: string; data: BodyType<SummaryEmailPreviewInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof previewSummaryCustomization>>,
+  TError,
+  { userId: string; data: BodyType<SummaryEmailPreviewInput> },
+  TContext
+> => {
+  return useMutation(getPreviewSummaryCustomizationMutationOptions(options));
+};
 
 /**
  * Returns server health status

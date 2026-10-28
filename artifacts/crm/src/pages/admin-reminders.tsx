@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { getToken } from "@/lib/api";
@@ -327,7 +328,8 @@ export default function AdminRemindersPage() {
             </div>
 
             <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 leading-relaxed">
-              <strong>Includes:</strong> leads created or updated in the past 7 days, and all follow-ups scheduled in the next 7 days. Sent to every user account.
+              <strong>Includes:</strong> leads created or updated in the past 7 days, and all follow-ups scheduled in the next 7 days. Sent to every user account.{" "}
+              <Link href="/admin/summary-emails" className="underline font-medium text-foreground" data-testid="link-summary-emails">Customize whose leads each recipient sees</Link>
             </div>
 
             <div className="flex items-center justify-between">

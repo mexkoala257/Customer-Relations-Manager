@@ -5,6 +5,8 @@ import { eq, and, gte, lte, lt } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
 import { runFollowUpReminders, runSummaryEmails, runPastDueReminders, buildSummaryReportData } from "../lib/scheduler";
 import { sendFollowUpReminderEmail, sendPastDueReminderEmail, sendSummaryEmail } from "../lib/mailer";
+import { loadSummaryCustomizations } from "../lib/summary-customizations";
+import { buildRecipientSummaryOptions } from "../lib/summary-recipient";
 
 const router = Router();
 
@@ -179,51 +181,20 @@ router.post("/admin/reminders/send-summary-user/:userId", requireAdmin, async (r
   if (!users.length) return res.status(404).json({ error: "User not found" });
   const user = users[0];
 
-  const today = new Date();
-  const since = new Date(today);
-  since.setDate(since.getDate() - 7);
-  const upcoming = new Date(today);
-  upcoming.setDate(upcoming.getDate() + 7);
-
-  const todayStr = today.toISOString().slice(0, 10);
-  const sinceStr = since.toISOString().slice(0, 10);
-  const upcomingStr = upcoming.toISOString().slice(0, 10);
-
-  const [recentLeads, upcomingLeads] = await Promise.all([
-    db
-      .select({
-        companyName: customersTable.companyName,
-        contactName: customersTable.contactName,
-        status: leadsTable.status,
-        repEmail: usersTable.email,
-        updatedAt: leadsTable.createdAt,
-      })
-      .from(leadsTable)
-      .innerJoin(usersTable, eq(leadsTable.userId, usersTable.id))
-      .innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
-      .where(gte(leadsTable.createdAt, since)),
-    db
-      .select({
-        companyName: customersTable.companyName,
-        contactName: customersTable.contactName,
-        followUpDate: leadsTable.followUpDate,
-        status: leadsTable.status,
-        repEmail: usersTable.email,
-      })
-      .from(leadsTable)
-      .innerJoin(usersTable, eq(leadsTable.userId, usersTable.id))
-      .innerJoin(customersTable, eq(leadsTable.customerId, customersTable.id))
-      .where(and(gte(leadsTable.followUpDate, todayStr), lte(leadsTable.followUpDate, upcomingStr))),
+  const settings = await ensureSettings();
+  const sections = settings.reportSections ?? DEFAULT_REPORT_SECTIONS;
+  const [data, configurations] = await Promise.all([
+    buildSummaryReportData(sections),
+    loadSummaryCustomizations(),
   ]);
-
-  const recipientName = user.email.split("@")[0];
-  const result = await sendSummaryEmail({
-    toEmail: user.email,
-    recipientName,
-    periodLabel: "Activity",
-    recentLeads: recentLeads.map((l) => ({ ...l, updatedAt: l.updatedAt.toISOString().slice(0, 10) })),
-    upcomingLeads: upcomingLeads.filter((l): l is typeof l & { followUpDate: string } => l.followUpDate !== null),
-  });
+  const configuration = configurations.find((item) => item.recipientId === user.id);
+  const result = await sendSummaryEmail(buildRecipientSummaryOptions(
+    data,
+    { id: user.id, email: user.email, name: user.fullName, role: user.role },
+    sections,
+    "Activity",
+    configuration?.coworkerIds,
+  ));
   return res.json(result);
 });
 

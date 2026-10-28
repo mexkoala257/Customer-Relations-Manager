@@ -22,6 +22,7 @@ import accountCustomPricesRouter from "./account-custom-prices";
 import featureFlagsRouter from "./feature-flags";
 import feedConfigRouter from "./feed-config";
 import leadRequirementsRouter from "./lead-requirements";
+import summaryCustomizationsRouter from "./summary-customizations";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(accountCustomPricesRouter);
 router.use(featureFlagsRouter);
 router.use(feedConfigRouter);
 router.use(leadRequirementsRouter);
+router.use(summaryCustomizationsRouter);
 
 export default router;

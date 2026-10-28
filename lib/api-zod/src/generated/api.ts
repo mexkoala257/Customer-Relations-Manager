@@ -8,6 +8,84 @@
 import * as zod from "zod";
 
 /**
+ * @summary List weekly email recipients and their ordered coworker selections (admin only)
+ */
+export const GetSummaryCustomizationsResponse = zod.object({
+  users: zod.array(
+    zod.object({
+      id: zod.string(),
+      email: zod.string(),
+      name: zod.string().nullable(),
+      role: zod.enum(["admin", "superadmin", "sales", "data-entry"]),
+    }),
+  ),
+  configurations: zod.array(
+    zod.object({
+      recipientId: zod.string(),
+      coworkerIds: zod.array(zod.string()),
+    }),
+  ),
+});
+
+/**
+ * @summary Save an ordered coworker list; the recipient is always first (admin only)
+ */
+export const SaveSummaryCustomizationParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const saveSummaryCustomizationBodyCoworkerIdsMax = 500;
+
+export const SaveSummaryCustomizationBody = zod.object({
+  coworkerIds: zod
+    .array(zod.string())
+    .max(saveSummaryCustomizationBodyCoworkerIdsMax),
+});
+
+export const SaveSummaryCustomizationResponse = zod.object({
+  recipientId: zod.string(),
+  coworkerIds: zod.array(zod.string()),
+});
+
+/**
+ * @summary Restore the recipient's default summary (admin only)
+ */
+export const ResetSummaryCustomizationParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const ResetSummaryCustomizationResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary Render an unsaved recipient configuration without sending email (admin only)
+ */
+export const PreviewSummaryCustomizationParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const previewSummaryCustomizationBodyCoworkerIdsMax = 500;
+
+export const PreviewSummaryCustomizationBody = zod.object({
+  coworkerIds: zod
+    .array(zod.string())
+    .max(previewSummaryCustomizationBodyCoworkerIdsMax),
+  useDefault: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Preview the unchanged default report instead of a custom selection.",
+    ),
+});
+
+export const PreviewSummaryCustomizationResponse = zod.object({
+  subject: zod.string(),
+  html: zod.string(),
+  text: zod.string(),
+});
+
+/**
  * Returns server health status
  * @summary Health check
  */
@@ -290,7 +368,6 @@ export const ListLeadsQueryParams = zod.object({
   userId: zod.coerce.string().optional(),
   followUpToday: zod.coerce.string().optional(),
   followUpThisWeek: zod.coerce.string().optional(),
-  pastDue: zod.coerce.string().optional(),
 });
 
 export const ListLeadsResponseItem = zod.object({

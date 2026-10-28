@@ -5,6 +5,8 @@ import { eq, and, gte, lte, lt, sql } from "drizzle-orm";
 import { sendFollowUpReminderEmail, sendSummaryEmail, sendPastDueReminderEmail } from "./mailer";
 import { logger } from "./logger";
 import { getPipelineSummary } from "./pipeline-summary";
+import { loadSummaryCustomizations } from "./summary-customizations";
+import { buildRecipientSummaryOptions } from "./summary-recipient";
 
 async function getSettings() {
   const rows = await db.select().from(reminderSettingsTable).where(eq(reminderSettingsTable.id, 1)).limit(1);
@@ -343,43 +345,16 @@ export async function runSummaryEmails(): Promise<{ emailsSent: number; logs: st
   const sections: ReportSection[] = (settings.reportSections as ReportSection[] | null) ?? DEFAULT_REPORT_SECTIONS;
 
   const data = await buildSummaryReportData(sections, { recordPipelineSnapshot: true });
+  const configurations = await loadSummaryCustomizations();
 
   logs.push(`Sending ${periodLabel} summary to ${data.allUsers.length} user(s) — ${data.recentLeads.length} recent, ${data.upcomingLeads.length} upcoming`);
 
   let emailsSent = 0;
   for (const user of data.allUsers) {
-    const recipientName = user.name || user.email.split("@")[0];
-    const isAdmin = user.role === "admin" || user.role === "superadmin";
-
-    // Admins see all leads (grouped by rep in the template).
-    // Sales/data-entry reps see only their own leads.
-    const recentLeads = isAdmin
-      ? data.recentLeads
-      : data.recentLeads.filter((l) => l.repEmail === user.email);
-    const upcomingLeads = isAdmin
-      ? data.upcomingLeads
-      : data.upcomingLeads.filter((l) => l.repEmail === user.email);
-    const overdueLeads = isAdmin
-      ? data.overdueLeads
-      : data.overdueLeads.filter((l) => l.repEmail === user.email);
-    const wonLeads = isAdmin
-      ? data.wonLeads
-      : data.wonLeads.filter((l) => l.repEmail === user.email);
-
-    const result = await sendSummaryEmail({
-      toEmail: user.email,
-      recipientName,
-      periodLabel: `${periodLabel} Morning`,
-      sections,
-      isAdmin,
-      recentLeads,
-      upcomingLeads,
-      overdueLeads,
-      wonLeads,
-      pipelineSummary: data.pipelineSummary,
-      weeklyLeadCounts: data.weeklyLeadCounts,
-      topPerformers: data.topPerformers,
-    });
+    const configuration = configurations.find((item) => item.recipientId === user.id);
+    const result = await sendSummaryEmail(buildRecipientSummaryOptions(
+      data, user, sections, `${periodLabel} Morning`, configuration?.coworkerIds,
+    ));
     logs.push(`${result.sent ? "✓ Sent" : "○ Logged"} ${periodLabel} summary to ${user.email}`);
     if (result.sent) emailsSent++;
   }

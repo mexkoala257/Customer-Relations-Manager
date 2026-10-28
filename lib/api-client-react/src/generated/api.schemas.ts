@@ -27,6 +27,7 @@ export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 export const UserRole = {
   admin: "admin",
   sales: "sales",
+  "data-entry": "data-entry",
 } as const;
 
 export interface User {
@@ -54,6 +55,7 @@ export type CreateUserBodyRole =
 export const CreateUserBodyRole = {
   admin: "admin",
   sales: "sales",
+  "data-entry": "data-entry",
 } as const;
 
 export interface CreateUserBody {
@@ -69,6 +71,7 @@ export type UpdateUserBodyRole =
 export const UpdateUserBodyRole = {
   admin: "admin",
   sales: "sales",
+  "data-entry": "data-entry",
 } as const;
 
 export interface UpdateUserBody {
@@ -283,6 +286,52 @@ export interface DashboardSummary {
 export interface StatusCount {
   status: string;
   count: number;
+}
+
+export type SummaryEmailUserRole =
+  (typeof SummaryEmailUserRole)[keyof typeof SummaryEmailUserRole];
+
+export const SummaryEmailUserRole = {
+  admin: "admin",
+  superadmin: "superadmin",
+  sales: "sales",
+  "data-entry": "data-entry",
+} as const;
+
+export interface SummaryEmailUser {
+  id: string;
+  email: string;
+  /** @nullable */
+  name: string | null;
+  role: SummaryEmailUserRole;
+}
+
+export interface SummaryCustomization {
+  recipientId: string;
+  coworkerIds: string[];
+}
+
+export interface SummaryCustomizationInput {
+  /** @maxItems 500 */
+  coworkerIds: string[];
+}
+
+export interface SummaryCustomizationOverview {
+  users: SummaryEmailUser[];
+  configurations: SummaryCustomization[];
+}
+
+export interface SummaryEmailPreview {
+  subject: string;
+  html: string;
+  text: string;
+}
+
+export interface SummaryEmailPreviewInput {
+  /** @maxItems 500 */
+  coworkerIds: string[];
+  /** Preview the unchanged default report instead of a custom selection. */
+  useDefault?: boolean;
 }
 
 export type ListCustomersParams = {

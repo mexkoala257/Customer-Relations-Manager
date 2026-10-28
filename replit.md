@@ -16,6 +16,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Admin Parts Catalog** (`/admin/parts`): full CRUD table — inline row editing, New Part form, category assignment dropdown, price editing, active/inactive toggle, delete with confirmation
 - Dashboard with clickable stat cards, pipeline legend links, and weekly goal tracking
 - Weekly email reports with per-rep lead notes and rep first-name display
+- **Summary Email Recipients** (`/admin/summary-emails`, admins/superadmins): per-recipient coworker selection and ordering for Monday/Friday summaries; own leads always first, complete rep blocks with notes and no-activity messages; save/reset and no-send preview. Follow-up/past-due reminders and CRM permissions are unchanged.
 - Print/PDF report generation
 
 ## Stack

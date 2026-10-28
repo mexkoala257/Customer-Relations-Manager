@@ -21,6 +21,77 @@ tags:
   - name: dashboard
     description: Dashboard and analytics
 paths:
+  /admin/summary-customizations:
+    get:
+      operationId: getSummaryCustomizations
+      tags: [users]
+      summary: List weekly email recipients and their ordered coworker selections (admin only)
+      responses:
+        "200":
+          description: Recipients and saved configurations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SummaryCustomizationOverview"
+  /admin/summary-customizations/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      operationId: saveSummaryCustomization
+      tags: [users]
+      summary: Save an ordered coworker list; the recipient is always first (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SummaryCustomizationInput"
+      responses:
+        "200":
+          description: Saved configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SummaryCustomization"
+    delete:
+      operationId: resetSummaryCustomization
+      tags: [users]
+      summary: Restore the recipient's default summary (admin only)
+      responses:
+        "200":
+          description: Reset successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /admin/summary-customizations/{userId}/preview:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: previewSummaryCustomization
+      tags: [users]
+      summary: Render an unsaved recipient configuration without sending email (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SummaryEmailPreviewInput"
+      responses:
+        "200":
+          description: Rendered recipient email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SummaryEmailPreview"
   /healthz:
     get:
       operationId: healthCheck
@@ -844,3 +915,72 @@ components:
       required:
         - status
         - count
+
+    SummaryEmailUser:
+      type: object
+      required: [id, email, name, role]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [admin, superadmin, sales, data-entry]
+    SummaryCustomization:
+      type: object
+      required: [recipientId, coworkerIds]
+      properties:
+        recipientId:
+          type: string
+        coworkerIds:
+          type: array
+          items:
+            type: string
+    SummaryCustomizationInput:
+      type: object
+      required: [coworkerIds]
+      properties:
+        coworkerIds:
+          type: array
+          maxItems: 500
+          uniqueItems: true
+          items:
+            type: string
+    SummaryCustomizationOverview:
+      type: object
+      required: [users, configurations]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/SummaryEmailUser"
+        configurations:
+          type: array
+          items:
+            $ref: "#/components/schemas/SummaryCustomization"
+    SummaryEmailPreview:
+      type: object
+      required: [subject, html, text]
+      properties:
+        subject:
+          type: string
+        html:
+          type: string
+        text:
+          type: string
+    SummaryEmailPreviewInput:
+      type: object
+      required: [coworkerIds]
+      properties:
+        coworkerIds:
+          type: array
+          maxItems: 500
+          uniqueItems: true
+          items:
+            type: string
+        useDefault:
+          type: boolean
+          description: Preview the unchanged default report instead of a custom selection.

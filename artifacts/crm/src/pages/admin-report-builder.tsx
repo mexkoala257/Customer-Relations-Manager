@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { getToken } from "@/lib/api";
@@ -223,7 +224,8 @@ export default function AdminReportBuilderPage() {
             <Info className="w-4 h-4 flex-shrink-0" />
             <span>
               Summary emails are sent automatically on Monday and Friday mornings to all staff.
-              Toggle sections on or off, adjust time windows, then save and optionally send yourself a preview.
+              Toggle sections on or off, adjust time windows, then save and optionally send yourself a preview.{" "}
+              <Link href="/admin/summary-emails" className="underline font-medium text-foreground" data-testid="link-summary-emails">Choose whose leads each recipient sees</Link>
             </span>
           </div>
         </div>

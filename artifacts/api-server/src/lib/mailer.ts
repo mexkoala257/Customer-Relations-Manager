@@ -333,7 +333,7 @@ export async function sendPastDueReminderEmail(opts: {
   return deliver(opts.toEmail, subject, html, text, "reminder_past_due");
 }
 
-export async function sendSummaryEmail(opts: {
+export type SummaryEmailOptions = {
   toEmail: string;
   recipientName: string;
   periodLabel: string;
@@ -346,12 +346,38 @@ export async function sendSummaryEmail(opts: {
   pipelineSummary?: PipelineSummary;
   weeklyLeadCounts?: Array<{ repName: string | null; repEmail: string; count: number }>;
   topPerformers?: Array<{ repEmail: string; repName: string; count: number }>;
-}): Promise<{ sent: boolean; message: string }> {
+  salespersonBlocks?: SalespersonSummaryBlock[];
+};
+
+export type SalespersonSummaryBlock = Pick<SummaryEmailOptions,
+  "recentLeads" | "upcomingLeads" | "overdueLeads" | "wonLeads"> & {
+  salespersonId: string;
+  name: string;
+  isRecipient: boolean;
+};
+
+export async function sendSummaryEmail(opts: SummaryEmailOptions): Promise<{ sent: boolean; message: string }> {
+  const { subject, html, text } = await renderSummaryEmail(opts);
+  return deliver(opts.toEmail, subject, html, text, "summary");
+}
+
+export async function renderSummaryEmail(opts: SummaryEmailOptions) {
   const settings = await getAllSettings();
+  const { subject, html, text } = renderSummaryContent(opts, settings);
+  return { subject, html, text };
+}
+
+function renderSummaryContent(opts: SummaryEmailOptions, settings: Record<string, string>) {
   const { companyName, accentBg, accentText } = getEmailBranding(settings);
 
   const subject = `${companyName} — ${opts.periodLabel} Activity Summary`;
   const isAdmin = opts.isAdmin ?? false;
+
+  function escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[char]!);
+  }
 
   function repLabel(repName: string | null | undefined, repEmail: string): string {
     if (repName && repName.trim()) return repName.trim();
@@ -360,7 +386,7 @@ export async function sendSummaryEmail(opts: {
 
   function truncateNotes(notes: string | null | undefined, max = 120): string {
     if (!notes) return "—";
-    return notes.length > max ? notes.slice(0, max) + "…" : notes;
+    return escapeHtml(notes.length > max ? notes.slice(0, max) + "…" : notes);
   }
 
   function sectionHeader(title: string, color = "#374151", icon = "") {
@@ -368,7 +394,7 @@ export async function sendSummaryEmail(opts: {
   }
 
   function repSubHeader(name: string) {
-    return `<div style="padding:7px 16px;background:#f3f4f6;border-left:3px solid ${accentBg};font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.6px">${name}</div>`;
+    return `<div style="padding:7px 16px;background:#f3f4f6;border-left:3px solid ${accentBg};font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.6px">${escapeHtml(name)}</div>`;
   }
 
   function tableWrap(headCells: string[], rows: string, bgColor = "#ffffff") {
@@ -434,9 +460,6 @@ export async function sendSummaryEmail(opts: {
     textParts.push(line);
     if (opts.weeklyLeadCounts) {
       const title = "New Leads Entered — Last 7 Days";
-      const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-      })[char]!);
       htmlParts.push(`<h3 style="margin:16px 0 8px;font-size:14px;color:#374151">${title}</h3>`);
       const rows = opts.weeklyLeadCounts.map((rep) => `<tr style="border-bottom:1px solid #f3f4f6">
         <td style="padding:7px 12px;font-size:13px">${escapeHtml(repLabel(rep.repName, rep.repEmail))}</td>
@@ -456,6 +479,36 @@ export async function sendSummaryEmail(opts: {
     }
   }
 
+  if (opts.salespersonBlocks) {
+    for (const block of opts.salespersonBlocks) {
+      const title = `${block.name}${block.isRecipient ? " — Your Leads" : ""}`;
+      htmlParts.push(`<h2 style="font-size:17px;margin:28px 0 4px;padding:12px 16px;background:${accentBg};color:${accentText};border-radius:6px">${escapeHtml(title)}</h2>`);
+      textParts.push(title);
+      const hasActivity = (
+        (isEnabled("recent_activity") && block.recentLeads.length > 0) ||
+        (isEnabled("upcoming_followups") && block.upcomingLeads.length > 0) ||
+        (isEnabled("overdue_leads") && (block.overdueLeads?.length ?? 0) > 0) ||
+        (isEnabled("won_leads") && (block.wonLeads?.length ?? 0) > 0)
+      );
+      if (!hasActivity) {
+        const message = "No activity in the enabled report sections for this period.";
+        htmlParts.push(`<p style="font-size:13px;color:#6b7280;padding:8px 16px">${message}</p>`);
+        textParts.push(message);
+        continue;
+      }
+      const rendered = renderSummaryContent({
+        ...opts,
+        ...block,
+        isAdmin: false,
+        salespersonBlocks: undefined,
+        pipelineSummary: undefined,
+        weeklyLeadCounts: undefined,
+        topPerformers: undefined,
+      }, settings);
+      htmlParts.push(rendered.contentHtml);
+      textParts.push(rendered.contentText);
+    }
+  } else {
   // Recent Activity
   if (isEnabled("recent_activity")) {
     const sec = getSection("recent_activity");
@@ -465,7 +518,7 @@ export async function sendSummaryEmail(opts: {
     htmlParts.push(groupedTableBlock(
       opts.recentLeads,
       headCells,
-      (l) => [l.companyName, l.contactName, `<span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${l.status}</span>`, truncateNotes(l.notes)],
+      (l) => [escapeHtml(l.companyName), escapeHtml(l.contactName), `<span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${escapeHtml(l.status)}</span>`, truncateNotes(l.notes)],
       "No recent activity this period."
     ));
     const repLine = (l: any) => isAdmin ? ` (${repLabel(l.repName, l.repEmail)})` : "";
@@ -481,7 +534,7 @@ export async function sendSummaryEmail(opts: {
     htmlParts.push(groupedTableBlock(
       opts.upcomingLeads,
       headCells,
-      (l) => [l.companyName, l.contactName, `<strong>${l.followUpDate}</strong>`, `<span style="background:#ecfdf5;color:#065f46;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${l.status}</span>`, truncateNotes(l.notes)],
+      (l) => [escapeHtml(l.companyName), escapeHtml(l.contactName), `<strong>${escapeHtml(l.followUpDate)}</strong>`, `<span style="background:#ecfdf5;color:#065f46;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${escapeHtml(l.status)}</span>`, truncateNotes(l.notes)],
       `No follow-ups scheduled in the next ${daysAhead} days.`
     ));
     const repLine = (l: any) => isAdmin ? ` (${repLabel(l.repName, l.repEmail)})` : "";
@@ -496,7 +549,7 @@ export async function sendSummaryEmail(opts: {
     htmlParts.push(groupedTableBlock(
       items,
       headCells,
-      (l) => [l.companyName, l.contactName, `<span style="color:#dc2626;font-weight:600">${l.followUpDate}</span>`, `<span style="background:#fef2f2;color:#991b1b;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${l.status}</span>`, truncateNotes(l.notes)],
+      (l) => [escapeHtml(l.companyName), escapeHtml(l.contactName), `<span style="color:#dc2626;font-weight:600">${escapeHtml(l.followUpDate)}</span>`, `<span style="background:#fef2f2;color:#991b1b;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${escapeHtml(l.status)}</span>`, truncateNotes(l.notes)],
       "No overdue follow-ups."
     ));
     const repLine = (l: any) => isAdmin ? ` (${repLabel(l.repName, l.repEmail)})` : "";
@@ -511,11 +564,12 @@ export async function sendSummaryEmail(opts: {
     htmlParts.push(groupedTableBlock(
       items,
       headCells,
-      (l) => [l.companyName, l.contactName, l.updatedAt, truncateNotes(l.notes)],
+      (l) => [escapeHtml(l.companyName), escapeHtml(l.contactName), escapeHtml(l.updatedAt), truncateNotes(l.notes)],
       "No won deals this period."
     ));
     const repLine = (l: any) => isAdmin ? ` (${repLabel(l.repName, l.repEmail)})` : "";
     textParts.push(`Won Deals:\n${items.map((l) => `• ${l.companyName}${repLine(l)}${l.notes ? `: ${l.notes}` : ""}`).join("\n") || "None"}`);
+  }
   }
 
   // Top Performers (admin-only)
@@ -526,8 +580,8 @@ export async function sendSummaryEmail(opts: {
       const rows = items.map((p, i) =>
         `<tr style="border-bottom:1px solid #f3f4f6">
           <td style="padding:8px 12px;font-size:13px;color:#7c3aed;font-weight:700;width:40px">#${i + 1}</td>
-          <td style="padding:8px 12px;font-size:13px;font-weight:600">${p.repName}</td>
-          <td style="padding:8px 12px;font-size:13px;color:#6b7280">${p.repEmail}</td>
+          <td style="padding:8px 12px;font-size:13px;font-weight:600">${escapeHtml(p.repName)}</td>
+          <td style="padding:8px 12px;font-size:13px;color:#6b7280">${escapeHtml(p.repEmail)}</td>
           <td style="padding:8px 12px;font-size:13px;font-weight:700;text-align:right;color:#5b21b6">${p.count}</td>
         </tr>`
       ).join("");
@@ -541,7 +595,9 @@ export async function sendSummaryEmail(opts: {
     textParts.push(`Top Performers:\n${items.map((p, i) => `#${i + 1} ${p.repName} — ${p.count} leads`).join("\n") || "None"}`);
   }
 
-  const greeting = isAdmin
+  const greeting = opts.salespersonBlocks?.length
+    ? "Your leads appear first, followed by the selected salespeople in your customized order."
+    : isAdmin
     ? `Here's the full team activity report, organized by sales rep.`
     : `Here's your personal sales activity summary.`;
 
@@ -549,7 +605,7 @@ export async function sendSummaryEmail(opts: {
     <div style="font-family:sans-serif;max-width:640px;margin:0 auto;color:#1f2937">
       ${emailHeader(companyName, accentBg, accentText, `${opts.periodLabel} Activity Summary`)}
       <div style="background:#fff;border:1px solid #e5e7eb;border-top:0;padding:24px 24px 8px">
-        <p style="margin:0 0 4px;font-size:15px">Hi <strong>${opts.recipientName}</strong>,</p>
+        <p style="margin:0 0 4px;font-size:15px">Hi <strong>${escapeHtml(opts.recipientName)}</strong>,</p>
         <p style="margin:0 0 4px;color:#6b7280;font-size:13px">${greeting}</p>
       </div>
       <div style="background:#fff;border:1px solid #e5e7eb;border-top:0;padding:0 24px 24px">
@@ -561,5 +617,5 @@ export async function sendSummaryEmail(opts: {
   const text = `${companyName} ${opts.periodLabel} Summary for ${opts.recipientName}\n\n` +
     (textParts.join("\n\n") || "No sections configured.");
 
-  return deliver(opts.toEmail, subject, html, text, "summary");
+  return { subject, html, text, contentHtml: htmlParts.join("\n"), contentText: textParts.join("\n\n") };
 }
